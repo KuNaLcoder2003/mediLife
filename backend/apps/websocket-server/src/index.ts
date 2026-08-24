@@ -15,19 +15,19 @@ wss.on('connection', async (ws, req) => {
         const data = JSON.parse(message.toString())
 
 
-        if (data.type == "Athentication") {
-            // const token = data.token
-            // const verified = jwt.verify(token, '(*)903rioierkmqwjkednjs') as { email: string, id: string }
+        if (data.type == "Authentication") {
+            const token = data.token
+            const verified = jwt.verify(token, '(*)903rioierkmqwjkednjs') as { email: string, id: string }
 
-            // if (!verified) {
-            //     ws.send("Unauthenticated")
-            // } else {
-            if (ws.readyState == WebSocket.OPEN) {
-                clients.set(data.id, ws)
+            if (!verified) {
+                ws.send("Unauthenticated")
             } else {
-                return
+                if (ws.readyState == WebSocket.OPEN) {
+                    clients.set(data.id, ws)
+                } else {
+                    return
+                }
             }
-            // }
         }
     })
     ws.send("Connected to ws server")
