@@ -103,6 +103,11 @@ export async function googleAuthCallbackHandler(req: express.Request, res: expre
         sameSite: "lax",
         maxAge: 25 * 24 * 60 * 60 * 1000
     });
-    res.json({ accessToken: accessToken, redirectTo: req.query.state as string || "http://localhost:5173/home", valid: true });
+    res.cookie("authToken", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax'
+    })
+    res.redirect(req.query.state as string || "http://localhost:5173/home");
 }
 
