@@ -54,13 +54,16 @@ export const getUserAuth = async (email: string, password: string) => {
             user: null
         }
     }
-    const matched = bcrypt.compare(password, user.password as string)
-    if (!matched && user.authMode == "CREDENTIALS") {
-        return {
-            valid: false,
-            reason: "Invalid password",
-            status: 401,
-            user: null
+
+    if (user.authMode == "CREDENTIALS") {
+        const matched = bcrypt.compare(password, user.password as string)
+        if (!matched) {
+            return {
+                valid: false,
+                reason: "Invalid password",
+                status: 401,
+                user: null
+            }
         }
     }
     return {
