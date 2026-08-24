@@ -1,0 +1,1 @@
+export { prisma } from "./client.js"; // exports instance of prisma

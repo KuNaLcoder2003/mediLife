@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  COMPANY
+}
+
+enum AuthMode {
+  GOOGLE
+  CREDENTIALS
+}
+
+enum OrderStatus {
+  CREATED
+  CONFIRMED
+  PACKING
+  SHIPPED
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+model Users {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  password String?
+  mobile String?
+  country String?
+  role Role
+  age Int?
+  gender String?
+  addresses Address[]
+  authMode AuthMode
+  createdAt DateTime @default(now())
+  updatedat DateTime @updatedAt
+  lastLoggedIn DateTime?
+  sessions     Session[]
+}
+
+
+model Address {
+  id String @id @default(cuid()) @db.VarChar(30)
+  postalCode String
+  userId String
+  addressLine1 String
+  addressLine2 String? @default("")
+  user Users @relation(fields: [userId] , references: [id] , onDelete:  Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders Order[]
+}
+
+model Session {
+  id String @id @default(cuid())
+  userId       String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime @default(now())
+  user         Users     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Products {
+  id String @id @default(ulid())
+  productName String
+  productDescription String
+  price Float
+  quantity Int
+  discount Float? @default(0)
+  reservedQuantity Int
+  categoryId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  images ProductIamges[]
+  category ProductCategory @relation(fields: [categoryId] , references: [id])
+  orderedProducts OrderdProducts[]
+}
+
+model ProductIamges {
+  id String @id @default(cuid())
+  imageUrl String
+  cloudId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  productId String
+  product Products @relation(fields: [productId] , references: [id])
+}
+
+model ProductCategory {
+  id String @id @default(cuid())
+  category String
+  products Products[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id String @id @default(ulid())
+  userId String
+  trackingId String @default("")
+  addressId String 
+  status OrderStatus
+  orderTotal Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orderedProducts OrderdProducts[]
+  address Address @relation(fields: [addressId] , references: [id])
+}
+
+model OrderdProducts {
+  orderId String
+  productId String
+  order Order @relation(fields: [orderId] , references: [id])
+  product Products @relation(fields: [productId] , references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@id([orderId , productId])
+}
