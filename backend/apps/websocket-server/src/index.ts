@@ -13,17 +13,18 @@ const redisClient = await getRedisClient()
 wss.on('connection', async (ws, req) => {
     ws.on('message', (message: RawData) => {
         const data = JSON.parse(message.toString())
-
-
+        console.log(data)
         if (data.type == "Authentication") {
             const token = data.token
-            const verified = jwt.verify(token, '(*)903rioierkmqwjkednjs') as { email: string, id: string }
-
+            const verified = jwt.verify(token, '(*)903rioierkmqwjkednjs') as { email: string, id: string, role: string }
             if (!verified) {
+                console.log('Not verified')
                 ws.send("Unauthenticated")
             } else {
+                console.log('Verified')
                 if (ws.readyState == WebSocket.OPEN) {
-                    clients.set(data.id, ws)
+                    clients.set(verified.id, ws)
+                    console.log(clients)
                 } else {
                     return
                 }
@@ -33,10 +34,11 @@ wss.on('connection', async (ws, req) => {
     ws.send("Connected to ws server")
 })
 
-redisClient.subscribe("WEBSOCKET_NOTIFY", async (message) => {
+await redisClient.subscribe("WEBSOCKET_NOTIFY", async (message) => {
     console.log(message)
     const data = JSON.parse(message) as { event: string, data: any }
     const client = clients.get(data.data.userId)
+    console.log(clients)
     switch (data.event) {
         case "PAYMENT_LINK_CREATED":
             if (client && client.readyState == WebSocket.OPEN) {

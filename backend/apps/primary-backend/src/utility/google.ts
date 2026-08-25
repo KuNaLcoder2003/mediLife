@@ -20,7 +20,7 @@ export async function generateAuthUrl() {
         access_type: "offline",
         scope: scopes,
         prompt: "consent",
-        state: "https://app.edgeframe-solutions.com"
+        state: "http://localhost:5173/home"
     })
     if (!url) {
         return false
@@ -103,7 +103,7 @@ export async function googleAuthCallbackHandler(req: express.Request, res: expre
         sameSite: "lax",
         maxAge: 25 * 24 * 60 * 60 * 1000
     });
-    res.cookie("authToken", token, {
+    res.cookie("authToken", accessToken, {
         httpOnly: true,
         secure: true,
         sameSite: 'lax'
