@@ -32,14 +32,14 @@ const getProducts = async (items: { productId: string, quantity: number }[]) => 
         }
     })
 
-    const mergedArr = products.map((product, index) => {
+    let mergedArr = products.map((product, index) => {
         return {
             ...product,
             quantity: items[index]!.quantity
         }
     })
 
-    return mergedArr.map(item => {
+    let result = mergedArr.map(item => {
         return {
             price_data: {
                 currency: "usd",
@@ -52,6 +52,10 @@ const getProducts = async (items: { productId: string, quantity: number }[]) => 
             quantity: item.quantity,
         }
     })
+    return {
+        line_items: result,
+        ids: ids
+    }
 }
 
 redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
@@ -61,19 +65,37 @@ redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
         const items = await getProducts(subscribedData.products)
         const url = await stripe.checkout.sessions.create({
             mode: "payment",
-            line_items: items,
+            line_items: items.line_items,
             success_url: 'http://localhost:5173/success',
             cancel_url: 'http://localhost:5173/fail',
             metadata: {
                 orderId: subscribedData.orderId,
                 userId: subscribedData.userId,
+                ids: JSON.stringify(items.ids),
             }
         })
         if (url) {
             // send url to client via websocket
-            await redisClient.publish("WEBSOCKET_NOTIFY", JSON.stringify({ event: "PAYMENT_LINK_CREATED", data: { url: url, userId: subscribedData.userId } }))
+            const result = await prisma.$transaction(async (tx) => {
+                const result = await tx.payments.create({
+                    data: {
+                        orderId: subscribedData.orderId,
+                        expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+                        status: "PENDING",
+                    }
+                })
+                return result
+            })
+            if (result) {
+                await redisClient.publish("WEBSOCKET_NOTIFY", JSON.stringify({ event: "PAYMENT_LINK_CREATED", data: { url: url, userId: subscribedData.userId } }))
+            } else {
+                // send payment generation error via websocket
+                await redisClient.publish("WEBSOCKET_NOTIFY", JSON.stringify({ event: "PAYMENT_LINK_ERROR", data: { message: "Error generating payment error , please try again later" } }))
+            }
+
         } else {
             // send payment generation error via websocket
+            await redisClient.publish("WEBSOCKET_NOTIFY", JSON.stringify({ event: "PAYMENT_LINK_ERROR", data: { message: "Error generating payment error , please try again later" } }))
         }
     } catch (error) {
         console.log(error)
