@@ -17,6 +17,42 @@ const redisClient = await getRedisClient()
 console.log('Connected to redis')
 
 
+
+
+await redisClient.subscribe('UPDATE_ORDER', async (message) => {
+    try {
+        const subscribedData = JSON.parse(message) as { eventId: string, orderId: string, userId: string, eventType: string, productIds: string[] }
+        console.log('ORDER UPDATE DATA IS : ', subscribedData)
+        // update the order
+        switch (subscribedData.eventType) {
+            case "PAYMENT_CONFIRMED":
+                await prisma.$transaction(async (tx) => {
+                    const res = await tx.order.updateMany(
+                        {
+                            where: {
+                                id: subscribedData.orderId
+                            },
+                            data: {
+                                status: "CONFIRMED"
+                            }
+                        }
+                    )
+                    if (res.count > 1) {
+                        await redisClient.publish("INVENTORY_UPDATE", JSON.stringify({ orderId: subscribedData.orderId, userId: subscribedData.userId, productIds: subscribedData.productIds }))
+                    }
+
+                }, { maxWait: 5000, timeout: 10000 })
+                break;
+            case "CREATE_TRACKING":
+
+                break;
+        }
+    } catch (error) {
+        console.log(error)
+    }
+})
+
+
 async function pickOrders() {
     const objectFromQueue = await redisClient.brPop('ORDERS', 0)
     console.log('Object Recieved in Order Service : ', JSON.parse(objectFromQueue!.element))
@@ -29,7 +65,7 @@ async function pickOrders() {
     switch (result.event) {
         case "INVENTORY_RESERVED":
             // PUBLISH TO INVENTORY_RESERVED => WHICH IS SUBSCRIBED BY THE PAYMENT SERVICE
-            await redisClient.publish("INVENTORY_RESERVED", JSON.stringify({ orderId: order.orderId, userId: order.userId, products: order.products, total: order.orderTotal }))
+            await redisClient.publish("INVENTORY_RESERVED", JSON.stringify({ orderId: order.orderId, userId: order.userId, products: order.products, total: order.orderTotal, eventId: `INVENTORY_RESERVED_${(new Date()).toDateString()}` }))
             break;
         case "INVENTORY_UNAVAILABLE":
             // PUBLISH TO INVENTORY_UNAVAILABLE => WHICH IS SUBSCRIBED BY THE WEBSOCKET THAT SENDS THE CLIENT THIS INFO

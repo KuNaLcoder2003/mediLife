@@ -35,9 +35,6 @@ export const checkAvailabilityAndReserve = async (items: { productId: string, qu
                         reservedQuantity: {
                             increment: item.quantity
                         },
-                        quantity: {
-                            decrement: item.quantity
-                        }
                     }
                 })
                 if (result.count === 0) {
