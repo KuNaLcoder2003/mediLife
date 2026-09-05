@@ -32,6 +32,13 @@ enum OrderStatus {
   RETURNED
 }
 
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
 model Users {
   id String @id @default(cuid())
   name String
@@ -118,6 +125,7 @@ model Order {
   updatedAt DateTime @updatedAt
   orderedProducts OrderdProducts[]
   address Address @relation(fields: [addressId] , references: [id])
+  payment Payments?
 }
 
 model OrderdProducts {
@@ -128,4 +136,14 @@ model OrderdProducts {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@id([orderId , productId])
+}
+
+model Payments {
+  id String @id @default(cuid())
+  orderId String @unique
+  status PaymentStatus
+  order Order @relation(fields: [orderId] , references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
 }
