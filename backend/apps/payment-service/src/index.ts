@@ -71,7 +71,7 @@ redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
             metadata: {
                 orderId: subscribedData.orderId,
                 userId: subscribedData.userId,
-                ids: JSON.stringify(items.ids),
+                products: JSON.stringify(subscribedData.products),
             }
         })
         if (url) {
