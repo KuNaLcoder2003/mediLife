@@ -95,3 +95,13 @@ export type OrderPayLoad = {
     "RETURNED"
     orderTotal: number
 }
+
+export type ProductDetails = {
+    productName: string,
+    productDescription: string,
+    price: number,
+    quantity: number,
+    reservedQuantity: number,
+    discount: number,
+    categoryId: string
+}
