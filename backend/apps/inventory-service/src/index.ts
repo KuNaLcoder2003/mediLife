@@ -12,44 +12,44 @@ class ProductStockUpdateError extends Error {
 
 await redisClient.subscribe('INVENTORY_UPDATE', async (message) => {
     try {
-        const subscribedData = JSON.parse(message) as { orderId: string, userId: string, productIds: string[] }
+        const subscribedData = JSON.parse(message) as { orderId: string, userId: string, products: { productId: string, quantity: number }[] }
         console.log(subscribedData)
         const results = await prisma.$transaction(async (tx) => {
-            for (const product of subscribedData.productIds) {
+            for (const product of subscribedData.products) {
                 const res = await tx.products.updateMany({
                     where: {
-                        id: product,
+                        id: product.productId,
                         quantity: {
-                            gte: 100
+                            gte: product.quantity
                         },
                         reservedQuantity: {
-                            gte: 1
+                            gte: product.quantity
                         }
                     },
                     data: {
                         quantity: {
-                            decrement: 14
+                            decrement: product.quantity
                         },
                         reservedQuantity: {
-                            decrement: 14
+                            decrement: product.quantity
                         }
                     }
                 })
                 if (res.count == 0) {
                     console.log('HERE IN INVENTOY SERVICE')
-                    throw new ProductStockUpdateError({ productId: product, orderId: subscribedData.orderId, userId: subscribedData.userId })
+                    throw new ProductStockUpdateError({ productId: product.productId, orderId: subscribedData.orderId, userId: subscribedData.userId })
                 }
                 await tx.orderdProducts.create({
                     data: {
                         orderId: subscribedData.orderId,
-                        productId: product,
+                        productId: product.productId,
                         // add quantity as well later
                     }
                 })
             }
         }, { maxWait: 7000, timeout: 12000 })
         console.log('PUSHING UPDATE ORDER EVENT FOR CREATING A TRACKING')
-        await redisClient.publish("UPDATE_ORDER", JSON.stringify({ eventType: "CREATE_TRACKING", orderId: subscribedData.orderId, userId: subscribedData.userId, products: subscribedData.productIds }))
+        await redisClient.publish("UPDATE_ORDER", JSON.stringify({ eventType: "CREATE_TRACKING", orderId: subscribedData.orderId, userId: subscribedData.userId, products: subscribedData.products }))
     } catch (error) {
         console.log(error)
         if (error instanceof ProductStockUpdateError) {
