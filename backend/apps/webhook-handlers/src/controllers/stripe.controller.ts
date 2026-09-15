@@ -32,7 +32,7 @@ export const stripeWebhookHandler = async (req: express.Request, res: express.Re
             let orderId = metadata.orderId;
             let userId = metadata.userId;
             let eventID = metadata.eventId; // FOR FUTURE USE
-            let productIds = JSON.parse(metadata.ids) as string[]
+            let products = JSON.parse(metadata.products) as { productId: string, quantity: number }[]
             console.log('\n')
             console.log('-----------------------------')
             console.log('\n')
@@ -43,7 +43,7 @@ export const stripeWebhookHandler = async (req: express.Request, res: express.Re
             const result = await updatePaymentStatus(orderId, userId)
             console.log(result)
             if (result?.type == 'Record_Already_Updated' || result?.updated) {
-                await redisClient.publish("UPDATE_ORDER", JSON.stringify({ eventId: "PAYMENT_CONFIRMED_UPDATE_ORDER" + new Date(), eventType: "PAYMENT_CONFIRMED", orderId: orderId, userId: userId, productIds: productIds }))
+                await redisClient.publish("UPDATE_ORDER", JSON.stringify({ eventId: "PAYMENT_CONFIRMED_UPDATE_ORDER" + new Date(), eventType: "PAYMENT_CONFIRMED", orderId: orderId, userId: userId, products: products }))
             }
             break;
         case "checkout.session.async_payment_failed":
