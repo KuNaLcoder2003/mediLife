@@ -5,7 +5,7 @@ const duplicte = await getRedisClient()
 console.log('Duplicated')
 await duplicte.subscribe('UPDATE_ORDER', async (message) => {
     try {
-        const subscribedData = JSON.parse(message) as { eventId: string, orderId: string, userId: string, eventType: string, productIds: string[] }
+        const subscribedData = JSON.parse(message) as { eventId: string, orderId: string, userId: string, eventType: string, products: { productId: string, quantity: number }[] }
         console.log('ORDER UPDATE DATA IS : ', subscribedData)
         // update the order
         switch (subscribedData.eventType) {
@@ -23,13 +23,23 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                     )
                     if (res.count == 1) {
                         console.log('HERE')
-                        await duplicte.publish("INVENTORY_UPDATE", JSON.stringify({ orderId: subscribedData.orderId, userId: subscribedData.userId, productIds: subscribedData.productIds }))
+                        await duplicte.publish("INVENTORY_UPDATE", JSON.stringify({ orderId: subscribedData.orderId, userId: subscribedData.userId, products: subscribedData.products }))
                     }
 
                 }, { maxWait: 5000, timeout: 10000 })
                 break;
             case "CREATE_TRACKING":
-
+                await prisma.$transaction(async (tx) => {
+                    await tx.order.update({
+                        where: {
+                            id: subscribedData.orderId,
+                            status: "CONFIRMED"
+                        },
+                        data: {
+                            status: "PACKING"
+                        }
+                    })
+                })
                 break;
         }
     } catch (error) {
