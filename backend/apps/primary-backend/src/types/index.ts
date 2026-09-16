@@ -105,3 +105,10 @@ export type ProductDetails = {
     discount: number,
     categoryId: string
 }
+
+export type keyWords = {
+    name: string,
+    category?: string,
+    price?: string,
+
+}
