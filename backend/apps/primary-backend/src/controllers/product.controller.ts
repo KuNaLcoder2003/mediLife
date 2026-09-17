@@ -1,7 +1,8 @@
 import express from "express"
 import type { keyWords, ProductDetails } from "../types/index.js"
 import { prisma } from "@repo/db"
-import { fetchProductById } from "../helpers/product.js"
+import { createMultipleImages, fetchProductById, uploadMultipleAssetsToCloud } from "../helpers/product.js"
+import type { Multer } from "multer"
 
 export const addProductHandler = async (req: express.Request, res: express.Response) => {
     try {
@@ -173,6 +174,60 @@ export const getProductById = async (req: express.Request, res: express.Response
         res.status(200).json({
             valid: true,
             product
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            message: "Somnething went wrong",
+            valid: false
+        })
+    }
+}
+
+export const uploadImagesHandler = async (req: express.Request, res: express.Response) => {
+    try {
+        const productId = req.body.productId;
+        const files = req.files as Express.Multer.File[]
+        if (!productId) {
+            res.status(400).json({
+                message: 'Please select a product to upload files for',
+                valid: false
+            })
+        }
+        if (!files) {
+            res.status(400).json({
+                message: 'Please provide file to upload',
+                valid: false
+            })
+            return
+        }
+        let fileBuffers: { fileBuffer: Buffer, fileName: string }[] = []
+        for (let file of files) {
+            const fileBuffer: Buffer = Buffer.from(file.buffer)
+            fileBuffers.push({ fileBuffer, fileName: file.filename })
+        }
+        const result = await uploadMultipleAssetsToCloud(fileBuffers, productId)
+        let assetArray: { imageUrl: string, key: string, cloudId: string, productId: string }[] = []
+        if (result.valid) {
+            if (result.uploaded.length > 0) {
+                assetArray = result.uploaded
+            }
+        } else {
+            assetArray = result.uploaded
+        }
+        const dbWrite = await createMultipleImages(assetArray)
+        if (!dbWrite.valid) {
+            res.json({
+                message: "Unable to upload images",
+                notUploaded: dbWrite.notCreated,
+                valid: false
+            })
+            return
+        }
+        res.status(200).json({
+            message: "Images uploaded",
+            valid: true,
+            productId: productId
         })
     } catch (error) {
         console.log(error)
