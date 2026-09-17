@@ -110,5 +110,4 @@ export type keyWords = {
     name: string,
     category?: string,
     price?: string,
-
 }
