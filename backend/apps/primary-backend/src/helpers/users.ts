@@ -56,7 +56,7 @@ export const getUserAuth = async (email: string, password: string) => {
     }
 
     if (user.authMode == "CREDENTIALS") {
-        const matched = bcrypt.compare(password, user.password as string)
+        const matched = await bcrypt.compare(password, user.password as string)
         if (!matched) {
             return {
                 valid: false,
