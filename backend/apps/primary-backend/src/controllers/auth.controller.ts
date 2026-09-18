@@ -13,9 +13,13 @@ export const refreshHandler = async (req: express.Request, res: express.Response
             })
             return
         }
+        const tokenHash = crypto
+            .createHash("sha256")
+            .update(refreshToken)
+            .digest("hex")
         const user = await prisma.session.findUnique({
             where: {
-                tokenHash: refreshToken,
+                tokenHash: tokenHash,
                 expiresAt: {
                     gte: new Date()
                 }
