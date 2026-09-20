@@ -148,3 +148,18 @@ model Payments {
   updatedAt DateTime @updatedAt
   expiresAt DateTime
 }
+
+model Events {
+  id String @id @default(cuid())
+  eventType String
+  aggregateType String
+  aggregateId String
+  payload Json
+  status String
+  attempts Int
+  createdAt DateTime @default(now())
+  updataedAt DateTime @updatedAt
+  lastError String?
+  @@index([status, createdAt])
+  @@index([aggregateType, aggregateId])
+}
