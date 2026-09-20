@@ -62,7 +62,7 @@ export const newOrder = async (req: express.Request, res: express.Response) => {
             status: "CREATED",
             orderTotal: total,
             addressId: incomingObject.addressId
-        })
+        }, enrichedOrderObject)
 
         if (!newOrder) {
             res.status(402).json({
@@ -71,7 +71,7 @@ export const newOrder = async (req: express.Request, res: express.Response) => {
             })
             return
         }
-        redisClient.lPush("ORDERS", JSON.stringify({ ...enrichedOrderObject, orderId: newOrder.id }))
+        // redisClient.lPush("ORDERS", JSON.stringify({ ...enrichedOrderObject, orderId: newOrder.id }))
         res.status(200).json({
             message: "Processing your order , please wait",
             valid: true

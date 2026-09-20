@@ -29,7 +29,7 @@ const getProducts = async (items: { productId: string, quantity: number }[]) => 
                 }
             },
             price: true,
-        }
+        },
     })
 
     let mergedArr = products.map((product, index) => {
