@@ -18,7 +18,7 @@ console.log('Connected to redis')
 
 
 async function pickOrders() {
-    const objectFromQueue = await redisClient.brPop('ORDERS', 0)
+    const objectFromQueue = await redisClient.brPop('ORDER_CREATED', 0)
     console.log('Object Recieved in Order Service : ', JSON.parse(objectFromQueue!.element))
     if (!objectFromQueue) {
         return

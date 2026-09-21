@@ -1,6 +1,12 @@
 import { prisma } from "@repo/db";
 import { getRedisClient } from "@repo/redis";
-
+type EventPayload = {
+    eventType: string,
+    eventId: string,
+    payload: { orderId: string, userId: string, eventType: string, products: { productId: string, quantity: number }[] },
+    aggregateId: string,
+    aggregateType: string
+}
 const redisClient = await getRedisClient()
 
 class ProductStockUpdateError extends Error {
@@ -12,10 +18,10 @@ class ProductStockUpdateError extends Error {
 
 await redisClient.subscribe('INVENTORY_UPDATE', async (message) => {
     try {
-        const subscribedData = JSON.parse(message) as { orderId: string, userId: string, products: { productId: string, quantity: number }[] }
+        const subscribedData = JSON.parse(message) as EventPayload
         console.log(subscribedData)
         const results = await prisma.$transaction(async (tx) => {
-            for (const product of subscribedData.products) {
+            for (const product of subscribedData.payload.products) {
                 const res = await tx.products.updateMany({
                     where: {
                         id: product.productId,
@@ -37,19 +43,27 @@ await redisClient.subscribe('INVENTORY_UPDATE', async (message) => {
                 })
                 if (res.count == 0) {
                     console.log('HERE IN INVENTOY SERVICE')
-                    throw new ProductStockUpdateError({ productId: product.productId, orderId: subscribedData.orderId, userId: subscribedData.userId })
+                    throw new ProductStockUpdateError({ productId: product.productId, orderId: subscribedData.payload.orderId, userId: subscribedData.payload.userId })
                 }
                 await tx.orderdProducts.create({
                     data: {
-                        orderId: subscribedData.orderId,
+                        orderId: subscribedData.payload.orderId,
                         productId: product.productId,
                         // add quantity as well later
                     }
                 })
+                await tx.events.create({
+                    data: {
+                        aggregateId: subscribedData.payload.orderId,
+                        aggregateType: "",
+                        eventType: "CREATE_TRACKING",
+                        payload: { eventType: "CREATE_TRACKING", orderId: subscribedData.payload.orderId, userId: subscribedData.payload.userId, products: subscribedData.payload.products },
+                        attempts: 0,
+                        status: "PENDING"
+                    }
+                })
             }
         }, { maxWait: 7000, timeout: 12000 })
-        console.log('PUSHING UPDATE ORDER EVENT FOR CREATING A TRACKING')
-        await redisClient.publish("UPDATE_ORDER", JSON.stringify({ eventType: "CREATE_TRACKING", orderId: subscribedData.orderId, userId: subscribedData.userId, products: subscribedData.products }))
     } catch (error) {
         console.log(error)
         if (error instanceof ProductStockUpdateError) {
@@ -71,7 +85,16 @@ await redisClient.subscribe('INVENTORY_UPDATE', async (message) => {
                     }
                 })
             }, { maxWait: 5000, timeout: 10000 })
-            await redisClient.publish("WEBSOKET_NOTIFY", JSON.stringify({ event: "STOCK_FAILURE", data: { message: "Some of the products are not available", products: error.product.productId } }))
+            await prisma.events.create({
+                data: {
+                    aggregateId: error.product.orderId,
+                    aggregateType: "INVENTORY",
+                    eventType: "STOCK_FAILURE",
+                    payload: { event: "STOCK_FAILURE", data: { message: "Some of the products are not available", products: error.product.productId } },
+                    status: "PENDING",
+                    attempts: 0
+                }
+            })
         }
 
     }

@@ -31,7 +31,16 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                     )
                     if (res.count == 1) {
                         console.log('HERE')
-                        await duplicte.publish("INVENTORY_UPDATE", JSON.stringify({ orderId: subscribedData.payload.orderId, userId: subscribedData.payload.userId, products: subscribedData.payload.products }))
+                        await tx.events.create({
+                            data: {
+                                aggregateId: subscribedData.payload.orderId,
+                                aggregateType: "INVENTORY",
+                                eventType: "INVENTORY_UPDATE",
+                                status: "PENDING",
+                                attempts: 0,
+                                payload: { orderId: subscribedData.payload.orderId, userId: subscribedData.payload.userId, products: subscribedData.payload.products }
+                            }
+                        })
                     }
 
                 }, { maxWait: 5000, timeout: 10000 })
