@@ -1,11 +1,19 @@
 import { getRedisClient } from "@repo/redis";
 import { prisma } from "@repo/db";
-
+type EventPayload = {
+    eventType: string,
+    eventId: string,
+    payload: { orderId: string, userId: string, eventType: string, products: { productId: string, quantity: number }[] },
+    aggregateId: string,
+    aggregateType: string
+}
 const duplicte = await getRedisClient()
 console.log('Duplicated')
+
+
 await duplicte.subscribe('UPDATE_ORDER', async (message) => {
     try {
-        const subscribedData = JSON.parse(message) as { eventId: string, orderId: string, userId: string, eventType: string, products: { productId: string, quantity: number }[] }
+        const subscribedData = JSON.parse(message) as EventPayload
         console.log('ORDER UPDATE DATA IS : ', subscribedData)
         // update the order
         switch (subscribedData.eventType) {
@@ -14,7 +22,7 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                     const res = await tx.order.updateMany(
                         {
                             where: {
-                                id: subscribedData.orderId
+                                id: subscribedData.payload.orderId
                             },
                             data: {
                                 status: "CONFIRMED"
@@ -23,7 +31,7 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                     )
                     if (res.count == 1) {
                         console.log('HERE')
-                        await duplicte.publish("INVENTORY_UPDATE", JSON.stringify({ orderId: subscribedData.orderId, userId: subscribedData.userId, products: subscribedData.products }))
+                        await duplicte.publish("INVENTORY_UPDATE", JSON.stringify({ orderId: subscribedData.payload.orderId, userId: subscribedData.payload.userId, products: subscribedData.payload.products }))
                     }
 
                 }, { maxWait: 5000, timeout: 10000 })
@@ -32,7 +40,7 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                 await prisma.$transaction(async (tx) => {
                     await tx.order.update({
                         where: {
-                            id: subscribedData.orderId,
+                            id: subscribedData.payload.orderId,
                             status: "CONFIRMED"
                         },
                         data: {

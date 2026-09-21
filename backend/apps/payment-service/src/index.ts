@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import dotenv from "dotenv"
 import { getRedisClient } from "@repo/redis";
-import type { SubscribedData } from "./types.js";
+import type { EventPayload, SubscribedData } from "./types.js";
 import { prisma } from "@repo/db";
 dotenv.config()
 
@@ -59,19 +59,20 @@ const getProducts = async (items: { productId: string, quantity: number }[]) => 
 }
 
 redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
+    const { payload } = JSON.parse(mesage) as EventPayload
     try {
-        const subscribedData = JSON.parse(mesage) as SubscribedData
-        console.log('Subscribed data in Payment Service is : ', subscribedData)
-        const items = await getProducts(subscribedData.products)
+
+        console.log('Subscribed data in Payment Service is : ', payload)
+        const items = await getProducts(payload.products)
         const url = await stripe.checkout.sessions.create({
             mode: "payment",
             line_items: items.line_items,
             success_url: 'http://localhost:5173/success',
             cancel_url: 'http://localhost:5173/fail',
             metadata: {
-                orderId: subscribedData.orderId,
-                userId: subscribedData.userId,
-                products: JSON.stringify(subscribedData.products),
+                orderId: payload.orderId,
+                userId: payload.userId,
+                products: JSON.stringify(payload.products),
             }
         })
         if (url) {
@@ -79,25 +80,38 @@ redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
             const result = await prisma.$transaction(async (tx) => {
                 const result = await tx.payments.create({
                     data: {
-                        orderId: subscribedData.orderId,
+                        orderId: payload.orderId,
                         expiresAt: new Date(Date.now() + 30 * 60 * 1000),
                         status: "PENDING",
                     }
                 })
-                return result
-            })
-            if (result) {
-                await redisClient.publish("WEBSOCKET_NOTIFY", JSON.stringify({ event: "PAYMENT_LINK_CREATED", data: { url: url, userId: subscribedData.userId } }))
-            } else {
-                // send payment generation error via websocket
-                await redisClient.publish("WEBSOCKET_NOTIFY", JSON.stringify({ event: "PAYMENT_LINK_ERROR", data: { message: "Error generating payment error , please try again later" } }))
-            }
 
-        } else {
-            // send payment generation error via websocket
-            await redisClient.publish("WEBSOCKET_NOTIFY", JSON.stringify({ event: "PAYMENT_LINK_ERROR", data: { message: "Error generating payment error , please try again later" } }))
+                await tx.events.create({
+                    data: {
+                        eventType: "PAYMENT_LINK_CREATED",
+                        aggregateId: payload.orderId,
+                        aggregateType: "PAYMENTS",
+                        payload: { url: url.url, userId: payload.userId },
+                        status: "PENDING",
+                        attempts: 0
+                    }
+                })
+                return result
+            }, { maxWait: 5000, timeout: 10000 })
+
         }
     } catch (error) {
         console.log(error)
+        await prisma.events.create({
+            data: {
+                eventType: "PAYMENT_LINK_ERROR",
+                aggregateId: payload.orderId,
+                aggregateType: "PAYMENTS",
+                payload: payload,
+                status: "PENDING",
+                lastError: error instanceof Error ? error.message : "",
+                attempts: 0
+            }
+        })
     }
 })

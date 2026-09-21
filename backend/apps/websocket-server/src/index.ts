@@ -9,6 +9,14 @@ const wss = new WebSocketServer({ server: server })
 const clients = new Map<string, WebSocket>()
 const redisClient = await getRedisClient()
 
+type EventPayload = {
+    eventType: string,
+    eventId: string,
+    payload: any,
+    aggregateId: string,
+    aggregateType: string
+}
+
 
 wss.on('connection', async (ws, req) => {
     ws.on('message', (message: RawData) => {
@@ -36,18 +44,18 @@ wss.on('connection', async (ws, req) => {
 
 await redisClient.subscribe("WEBSOCKET_NOTIFY", async (message) => {
     console.log(message)
-    const data = JSON.parse(message) as { event: string, data: any }
-    const client = clients.get(data.data.userId)
+    const data = JSON.parse(message) as EventPayload
+    const client = clients.get(data.payload.userId)
     console.log(clients)
-    switch (data.event) {
+    switch (data.eventType) {
         case "PAYMENT_LINK_CREATED":
             if (client && client.readyState == WebSocket.OPEN) {
-                client.send(JSON.stringify({ paymentUrl: data.data.url }))
+                client.send(JSON.stringify({ paymentUrl: data.payload.url }))
             }
             break;
         case "INVENTORY_UNAVAILABLE":
             if (client && client.readyState == WebSocket.OPEN) {
-                client.send(JSON.stringify(data.data))
+                client.send(JSON.stringify(data.payload.data))
             }
             break;
     }

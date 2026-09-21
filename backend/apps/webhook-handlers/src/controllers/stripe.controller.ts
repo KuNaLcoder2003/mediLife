@@ -3,6 +3,7 @@ import express from "express"
 import dotenv from "dotenv"
 import { getRedisClient } from "@repo/redis"
 import { updatePaymentStatus } from "../helpers/utility.js"
+import { prisma } from "@repo/db"
 dotenv.config()
 
 const WEBHOOK_SECRET = `${process.env.STRIPE_WEBHOOK_SECRET_KEY}`
@@ -43,7 +44,18 @@ export const stripeWebhookHandler = async (req: express.Request, res: express.Re
             const result = await updatePaymentStatus(orderId, userId)
             console.log(result)
             if (result?.type == 'Record_Already_Updated' || result?.updated) {
-                await redisClient.publish("UPDATE_ORDER", JSON.stringify({ eventId: "PAYMENT_CONFIRMED_UPDATE_ORDER" + new Date(), eventType: "PAYMENT_CONFIRMED", orderId: orderId, userId: userId, products: products }))
+                await prisma.events.create({
+                    data: {
+                        aggregateId: orderId,
+                        aggregateType: "PAYMENT_CONFIRMED",
+                        eventType: "UPDATE_ORDER",
+                        status: "PENDING",
+                        attempts: 0,
+                        lastError: "",
+                        payload: { orderId: orderId, userId: userId, products: products }
+                    }
+                })
+                // await redisClient.publish("UPDATE_ORDER", JSON.stringify({ eventId: "PAYMENT_CONFIRMED_UPDATE_ORDER" + new Date(), eventType: "PAYMENT_CONFIRMED", orderId: orderId, userId: userId, products: products }))
             }
             break;
         case "checkout.session.async_payment_failed":

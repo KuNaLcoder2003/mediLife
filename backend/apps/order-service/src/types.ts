@@ -15,6 +15,14 @@ export type Order = {
     orderTotal: number
 }
 
+export type OutboxOrderEvent = {
+    eventType: string,
+    eventId: string,
+    payload: Order
+    aggregateId: string,
+    aggregateType: string
+}
+
 export type Product = {
     id: string;
     productName: string;

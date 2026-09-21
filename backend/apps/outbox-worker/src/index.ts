@@ -16,7 +16,10 @@ async function startOuboxEventsWorker() {
             // process events
             console.log(events)
             for (let event of events) {
-                await processEvents(event)
+                const result = await processEvents(event)
+                if (!result) {
+                    continue
+                }
             }
         } catch (error) {
             console.log(error)

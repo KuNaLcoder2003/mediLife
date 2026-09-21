@@ -20,7 +20,7 @@ export const getProductById = async (id: string) => {
     return product
 }
 
-export const checkAvailabilityAndReserve = async (items: { productId: string, quantity: number }[]) => {
+export const checkAvailabilityAndReserve = async (items: { productId: string, quantity: number }[], orderId: string, userId: string, total: number) => {
     try {
         await prisma.$transaction(async (tx) => {
             for (let item of items) {
@@ -41,18 +41,39 @@ export const checkAvailabilityAndReserve = async (items: { productId: string, qu
                     throw new InsufficientStockError(item)
                 }
             }
+            await tx.events.create({
+                data: {
+                    aggregateType: "INVENTORY",
+                    aggregateId: orderId,
+                    eventType: "INVENTORY_RESERVED",
+                    lastError: "",
+                    status: "PENDING",
+                    attempts: 0,
+                    payload: { userId: userId, orderId: orderId, products: items }
+                }
+            })
         }, { maxWait: 10000, timeout: 10000 })
-        return {
-            event: "INVENTORY_RESERVED"
-        }
+        return true
     } catch (error) {
         console.log(error)
         if (error instanceof InsufficientStockError) {
             console.log('Insufficient stock:', error.product.productId);
-            return {
-                event: "INVENTORY_UNAVAILABLE",
-                productId: error.product.productId
-            }
+            await prisma.events.create({
+                data: {
+                    aggregateType: "INVENTORY",
+                    aggregateId: error.product.productId,
+                    eventType: "INVENTORY_UNAVAILABLE",
+                    lastError: error.message,
+                    status: "PENDING",
+                    attempts: 0,
+                    payload: { productId: error.product.productId, userId: userId }
+                }
+            })
+            return false
+            // return {
+            //     event: "INVENTORY_UNAVAILABLE",
+            //     productId: error.product.productId
+            // }
         } else {
             // DB connection error 
             return {
