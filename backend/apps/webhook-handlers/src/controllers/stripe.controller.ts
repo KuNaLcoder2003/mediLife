@@ -1,7 +1,8 @@
 import Stripe from "stripe"
 import express from "express"
 import dotenv from "dotenv"
-import { getRedisClient } from "@repo/redis"
+// import { getRedisClient } from "@repo/redis"
+
 import { updatePaymentStatus } from "../helpers/utility.js"
 import { prisma } from "@repo/db"
 dotenv.config()
@@ -9,10 +10,13 @@ dotenv.config()
 const WEBHOOK_SECRET = `${process.env.STRIPE_WEBHOOK_SECRET_KEY}`
 const STRIPE_SECRET = `${process.env.STRIPE_SECRET_KEY}`
 const stripe = new Stripe(STRIPE_SECRET)
-const redisClient = await getRedisClient()
+
+// const redisClient = await getRedisClient()
+
 export const stripeWebhookHandler = async (req: express.Request, res: express.Response) => {
-    console.log('REACHED WEBHOOK HANDLER OF STRIPE')
+
     let event: Stripe.Event
+
     try {
         const signature = req.headers['stripe-signature'] as string
         event = stripe.webhooks.constructEvent(
@@ -24,25 +28,19 @@ export const stripeWebhookHandler = async (req: express.Request, res: express.Re
         console.log(`Webhook signature verification failed.`, error);
         return res.sendStatus(400);
     }
+
+
     switch (event.type) {
         case "payment_intent.succeeded":
             break;
+
         case "checkout.session.completed":
             let data = event.data.object
             let metadata = data.metadata as any;
             let orderId = metadata.orderId;
             let userId = metadata.userId;
-            let eventID = metadata.eventId; // FOR FUTURE USE
             let products = JSON.parse(metadata.products) as { productId: string, quantity: number }[]
-            console.log('\n')
-            console.log('-----------------------------')
-            console.log('\n')
-            console.log('Metadata is : ', metadata)
-            console.log('\n')
-            console.log('-----------------------------')
-            console.log('\n')
             const result = await updatePaymentStatus(orderId, userId)
-            console.log(result)
             if (result?.type == 'Record_Already_Updated' || result?.updated) {
                 await prisma.events.create({
                     data: {
@@ -55,21 +53,51 @@ export const stripeWebhookHandler = async (req: express.Request, res: express.Re
                         payload: { orderId: orderId, userId: userId, products: products }
                     }
                 })
-                // await redisClient.publish("UPDATE_ORDER", JSON.stringify({ eventId: "PAYMENT_CONFIRMED_UPDATE_ORDER" + new Date(), eventType: "PAYMENT_CONFIRMED", orderId: orderId, userId: userId, products: products }))
             }
             break;
+
         case "checkout.session.async_payment_failed":
+            let { order_id } = event.data.object.metadata as any
+            await prisma.$transaction(async (tx) => {
+                await tx.order.update({
+                    where: {
+                        id: order_id
+                    },
+                    data: {
+                        status: "CANCELLED"
+                    }
+                })
+                await tx.payments.update({
+                    where: {
+                        orderId: order_id,
+                    },
+                    data: {
+                        status: "FAILED"
+                    }
+                })
+                await tx.events.create({
+                    data: {
+                        eventType: "PAYMENT_FAILED",
+                        aggregateId: order_id,
+                        aggregateType: "PAYMENT",
+                        status: "PENDING",
+                        lastError: "",
+                        attempts: 0,
+                        payload: event.data.object.metadata as any
+                    }
+                })
+            }, { maxWait: 5000, timeout: 10000 })
             break;
     }
 }
-const checkOutSessionCompleted = (orderId: string, userId: string) => {
-    try {
-        // when payment succedds => write to db , send ORDERUPDATE EVENT , send CREATE TRACKING EVENT
+// const checkOutSessionCompleted = (orderId: string, userId: string) => {
+//     try {
+//         // when payment succedds => write to db , send ORDERUPDATE EVENT , send CREATE TRACKING EVENT
 
-    } catch (error) {
-        console.log(error)
-    }
-}
+//     } catch (error) {
+//         console.log(error)
+//     }
+// }
 
 
 
