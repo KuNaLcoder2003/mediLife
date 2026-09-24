@@ -2,7 +2,6 @@ import express from "express"
 import type { keyWords, ProductDetails } from "../types/index.js"
 import { prisma } from "@repo/db"
 import { createMultipleImages, fetchProductById, uploadMultipleAssetsToCloud } from "../helpers/product.js"
-import type { Multer } from "multer"
 
 export const addProductHandler = async (req: express.Request, res: express.Response) => {
     try {
@@ -204,8 +203,11 @@ export const uploadImagesHandler = async (req: express.Request, res: express.Res
         let fileBuffers: { fileBuffer: Buffer, fileName: string }[] = []
         for (let file of files) {
             const fileBuffer: Buffer = Buffer.from(file.buffer)
-            fileBuffers.push({ fileBuffer, fileName: file.filename })
+            fileBuffers.push({ fileBuffer, fileName: file.originalname })
         }
+
+        console.log(fileBuffers)
+        // return
         const result = await uploadMultipleAssetsToCloud(fileBuffers, productId)
         let assetArray: { imageUrl: string, key: string, cloudId: string, productId: string }[] = []
         if (result.valid) {
@@ -228,6 +230,29 @@ export const uploadImagesHandler = async (req: express.Request, res: express.Res
             message: "Images uploaded",
             valid: true,
             productId: productId
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            message: "Somnething went wrong",
+            valid: false
+        })
+    }
+}
+
+export const getProductCategories = async (req: express.Request, res: express.Response) => {
+    try {
+        const categories = await prisma.productCategory.findMany({})
+        if (!categories) {
+            res.status(404).json({
+                message: "Categories not found",
+                valid: false
+            })
+            return
+        }
+        res.status(200).json({
+            valid: true,
+            categories
         })
     } catch (error) {
         console.log(error)
