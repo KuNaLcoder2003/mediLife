@@ -18,7 +18,7 @@ export const uploadAsset = async (fileBuffer: Buffer, fileName: string) => {
     try {
         const params = {
             Bucket: AWS_S3_BUCKET_NAME,
-            Key: `${fileName}`,
+            Key: `products/${fileName}`,
             Body: fileBuffer,
             ContentType: "image/jpg,jpeg,png"
         }
