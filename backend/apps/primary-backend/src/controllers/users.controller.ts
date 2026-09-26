@@ -74,7 +74,7 @@ export const signUp = async (req: express.Request, res: express.Response) => {
             })
             return
         }
-        const refreshToken = crypto.hash("sha256", `${newUser.id}_${newUser.name}_${new Date().toString()}`)
+        const refreshToken = crypto.randomBytes(32).toString("hex")
         const tokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex")
         const session = await prisma.$transaction(async (tx) => {
             const entry = await tx.session.create({
@@ -132,7 +132,7 @@ export const signIn = async (req: express.Request, res: express.Response) => {
             })
             return
         }
-        const refreshToken = crypto.hash("sha256", `${user.user.id}_${user.user.name}_${new Date().toString()}`)
+        const refreshToken = crypto.randomBytes(32).toString("hex")
         const tokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex")
         const session = await prisma.$transaction(async (tx) => {
             const entry = await tx.session.create({

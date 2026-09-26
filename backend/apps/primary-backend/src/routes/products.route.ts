@@ -10,7 +10,7 @@ const productsRouter = express.Router()
 productsRouter.post('/newProduct', addProductHandler)
 productsRouter.post('/newCategory', addNewProductCategory)
 productsRouter.get('/', getProducts)
-productsRouter.get('/:productId', getProductById)
+productsRouter.get('/get/:productId', getProductById)
 productsRouter.post('/newImages', upload.array("product_images", 5), uploadImagesHandler)
 productsRouter.get('/categories', getProductCategories)
 export default productsRouter

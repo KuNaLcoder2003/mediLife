@@ -87,13 +87,37 @@ export const addNewProductCategory = async (req: express.Request, res: express.R
     }
 }
 
+
+
 export const getProducts = async (req: express.Request, res: express.Response) => {
+    console.log('Req reached')
     try {
         const keWords: keyWords = req.query as any
         if (!keWords) {
+            const products = await prisma.products.findMany({
+                select: {
+                    productName: true,
+                    id: true,
+                    productDescription: true,
+                    quantity: true,
+                    price: true,
+                    discount: true,
+                    images: {
+                        select: {
+                            imageUrl: true,
+                            id: true
+                        }
+                    },
+                    category: {
+                        select: {
+                            category: true
+                        }
+                    }
+                }
+            })
             res.status(400).json({
-                message: 'Please enter product name , category to search',
-                valid: false
+                products,
+                valid: true
             })
             return
         }
@@ -242,7 +266,7 @@ export const uploadImagesHandler = async (req: express.Request, res: express.Res
 
 export const getProductCategories = async (req: express.Request, res: express.Response) => {
     try {
-        const categories = await prisma.productCategory.findMany({})
+        const categories = await prisma.productCategory.findMany()
         if (!categories) {
             res.status(404).json({
                 message: "Categories not found",

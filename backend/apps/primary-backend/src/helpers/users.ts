@@ -77,5 +77,9 @@ export const getUserAuth = async (email: string, password: string) => {
 
 
 export const addAddress = async () => {
+    try {
 
+    } catch (error) {
+
+    }
 }
