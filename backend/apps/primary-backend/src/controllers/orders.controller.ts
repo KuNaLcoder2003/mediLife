@@ -74,7 +74,8 @@ export const newOrder = async (req: express.Request, res: express.Response) => {
         // redisClient.lPush("ORDERS", JSON.stringify({ ...enrichedOrderObject, orderId: newOrder.id }))
         res.status(200).json({
             message: "Processing your order , please wait",
-            valid: true
+            valid: true,
+            orderId: newOrder.id,
         })
     } catch (error) {
         console.log(error)

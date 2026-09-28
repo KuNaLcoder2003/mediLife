@@ -6,7 +6,8 @@ dotenv.config()
 const JWT_SECRET = process.env.JWT_SECRET
 async function authMiddleware(req: any, res: express.Response, next: express.NextFunction) {
     try {
-        const authToken = req.headers.accessToken as string;
+        const authToken = req.headers.authorization as string;
+        console.log(authToken)
         if (!authToken || !authToken.startsWith("Bearer ")) {
             return res.status(403).json({
                 message: "Unauthorized",
@@ -21,7 +22,7 @@ async function authMiddleware(req: any, res: express.Response, next: express.Nex
                 valid: false
             })
         }
-        const verified = jwt.verify(token, JWT_SECRET || "kunal") as { email: string, id: string, role: "User" | "Company" }
+        const verified = jwt.verify(token, JWT_SECRET!) as { email: string, id: string, role: "User" | "Company" }
         if (!verified) {
             return res.status(403).json({
                 message: "Unauthorized",

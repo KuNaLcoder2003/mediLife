@@ -20,17 +20,25 @@ await redisClient.subscribe('INVENTORY_UPDATE', async (message) => {
     try {
         const subscribedData = JSON.parse(message) as EventPayload
         console.log(subscribedData)
+        const { orderId, userId, products } = subscribedData.payload
+
         const results = await prisma.$transaction(async (tx) => {
+            // const claimed = await tx.order.updateMany({
+            //     where: { id: orderId, status: "CREATED" },
+            //     data: { status: "CONFIRMED" },
+            // })
+            // if (claimed.count === 0) {
+            //     console.log(`[inventory] order ${orderId} already processed, skipping`)
+            //     return
+            // }
             for (const product of subscribedData.payload.products) {
+                console.log('Product is : ', product)
                 const res = await tx.products.updateMany({
                     where: {
                         id: product.productId,
                         quantity: {
                             gte: product.quantity
                         },
-                        reservedQuantity: {
-                            gte: product.quantity
-                        }
                     },
                     data: {
                         quantity: {
@@ -52,17 +60,17 @@ await redisClient.subscribe('INVENTORY_UPDATE', async (message) => {
                         // add quantity as well later
                     }
                 })
-                await tx.events.create({
-                    data: {
-                        aggregateId: subscribedData.payload.orderId,
-                        aggregateType: "",
-                        eventType: "CREATE_TRACKING",
-                        payload: { eventType: "CREATE_TRACKING", orderId: subscribedData.payload.orderId, userId: subscribedData.payload.userId, products: subscribedData.payload.products },
-                        attempts: 0,
-                        status: "PENDING"
-                    }
-                })
             }
+            await tx.events.create({
+                data: {
+                    aggregateId: subscribedData.payload.orderId,
+                    aggregateType: "ORDER",
+                    eventType: "UPDATE_ORDER",
+                    payload: { eventType: "CREATE_TRACKING", orderId: subscribedData.payload.orderId, userId: subscribedData.payload.userId, products: subscribedData.payload.products },
+                    attempts: 0,
+                    status: "PENDING"
+                }
+            })
         }, { maxWait: 7000, timeout: 12000 })
     } catch (error) {
         console.log(error)

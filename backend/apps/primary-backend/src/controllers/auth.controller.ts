@@ -81,23 +81,17 @@ export const logout = async (req: express.Request, res: express.Response) => {
 
 export const authUsingGoogle = async (req: express.Request, res: express.Response) => {
     try {
-        const url = await generateAuthUrl()
-        if (!url) {
-            res.status(400).json({
-                message: 'Unale to create auth link',
-                valid: false
-            })
-            return
-        }
-        res.status(200).json({
-            url,
-            valid: true
+        const state = crypto.randomBytes(16).toString("hex")
+        res.cookie("oauthState", state, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "lax",       // still sent when Google redirects back (top-level GET)
+            maxAge: 10 * 60 * 1000,
         })
+        const url = await generateAuthUrl(state)
+        res.status(200).json({ url, valid: true })
     } catch (error) {
         console.log(error)
-        res.status(500).json({
-            message: "Something went wrong",
-            valid: false
-        })
+        res.status(500).json({ message: "Something went wrong", valid: false })
     }
-} 
+}

@@ -16,7 +16,7 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
         const subscribedData = JSON.parse(message) as EventPayload
         console.log('ORDER UPDATE DATA IS : ', subscribedData)
         // update the order
-        switch (subscribedData.eventType) {
+        switch (subscribedData.payload.eventType) {
             case "PAYMENT_CONFIRMED":
                 await prisma.$transaction(async (tx) => {
                     const res = await tx.order.updateMany(

@@ -50,7 +50,7 @@ export const stripeWebhookHandler = async (req: express.Request, res: express.Re
                         status: "PENDING",
                         attempts: 0,
                         lastError: "",
-                        payload: { orderId: orderId, userId: userId, products: products }
+                        payload: { orderId: orderId, userId: userId, products: products, eventType: "PAYMENT_CONFIRMED" }
                     }
                 })
             }
