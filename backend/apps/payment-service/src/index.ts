@@ -145,7 +145,8 @@ duplicate.subscribe("INITIATE_REFUND", async (message) => {
             return
         }
         const refund = await stripe.refunds.create({
-            payment_intent: payment.stripeID
+            payment_intent: payment.stripeID,
+            metadata: { orderId: orderId, userId: userId, products: JSON.stringify(products) }
         })
 
 

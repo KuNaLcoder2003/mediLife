@@ -56,6 +56,42 @@ export const stripeWebhookHandler = async (req: express.Request, res: express.Re
             }
             break;
 
+        case "refund.updated":
+            const refund = event.data.object as Stripe.Refund;
+            if (refund.status == "succeeded") {
+                let metadata = refund.metadata as { orderId: string, userId: string, products: string, userEmail: string }
+
+                // update payments table
+                await prisma.$transaction(async (tx) => {
+                    await tx.payments.update({
+                        where: {
+                            orderId: orderId
+                        },
+                        data: {
+                            status: "CANCELLED" // change to Refunded
+                        }
+                    })
+                    await tx.events.create({
+                        data: {
+                            eventType: "MAIL_USER",
+                            aggregateId: orderId,
+                            aggregateType: "PAYMENTS",
+                            payload: {
+                                refundId: refund ? refund.id : "",
+                                orderId: orderId,
+                                userId: userId,
+                                eventType: "CONFIRM_REFUND_MAIL",
+                                userEmail: metadata.userEmail,
+                                amount: refund.amount
+                            },
+                            status: "CREATED",
+                            attempts: 0
+                        }
+                    })
+                })
+            }
+            break;
+
         case "checkout.session.async_payment_failed":
             let { order_id } = event.data.object.metadata as any
             await prisma.$transaction(async (tx) => {
