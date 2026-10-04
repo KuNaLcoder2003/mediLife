@@ -125,7 +125,6 @@ export const processEvents = async (event: Event) => {
                     aggregateType
                 }))
                 break;
-
             default:
                 throw new Error(`Unknown event type: ${eventType}`)
 

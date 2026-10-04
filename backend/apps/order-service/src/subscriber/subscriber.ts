@@ -38,7 +38,7 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                                 eventType: "INVENTORY_UPDATE",
                                 status: "PENDING",
                                 attempts: 0,
-                                payload: { orderId: subscribedData.payload.orderId, userId: subscribedData.payload.userId, products: subscribedData.payload.products }
+                                payload: { orderId: subscribedData.payload.orderId, userId: subscribedData.payload.userId, products: subscribedData.payload.products, eventType: "MOVE_INVENTORY" }
                             }
                         })
                     }

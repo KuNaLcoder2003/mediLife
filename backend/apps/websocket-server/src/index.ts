@@ -55,6 +55,7 @@ function removeClient(ws: Client) {
     if (!ws.userId) return
     const set = clients.get(ws.userId)
     set?.delete(ws)
+    // if after deleting from ws sets of a client the set size is zero then remove the client also
     if (set && set.size === 0) clients.delete(ws.userId)
 }
 

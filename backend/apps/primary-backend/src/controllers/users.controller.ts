@@ -190,3 +190,26 @@ export const addAddressHandler = async (req: any, res: express.Response) => {
         return
     }
 }
+
+export const updateUserDetails = async (req: any, res: express.Response) => {
+    try {
+        const { name, gender, age, mobile, country } = req.body ?? {}
+        if (typeof name !== "string" || !name.trim()) {
+            return res.status(400).json({ message: "Name is required", valid: false })
+        }
+        await prisma.users.update({
+            where: { id: req.id },
+            data: {   // whitelist: never pass req.body straight in (role, email, password...)
+                name: name.trim(),
+                gender: gender === "MALE" || gender === "FEMALE" ? gender : null,
+                age: Number.isInteger(age) && age > 0 && age <= 120 ? age : null,
+                mobile: typeof mobile === "string" && mobile.trim() ? mobile.trim() : null,
+                country: typeof country === "string" && country.trim() ? country.trim() : null,
+            },
+        })
+        res.status(200).json({ message: "Profile updated", valid: true })
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: "Something went wrong", valid: false })
+    }
+}
