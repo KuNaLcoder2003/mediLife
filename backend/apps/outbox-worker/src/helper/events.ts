@@ -125,6 +125,15 @@ export const processEvents = async (event: Event) => {
                     aggregateType
                 }))
                 break;
+            case "MAIL_USER":
+                await redisClient.publish(eventType, JSON.stringify({
+                    eventType,
+                    eventId: id,
+                    payload: payload,
+                    aggregateId,
+                    aggregateType
+                }))
+                break;
             default:
                 throw new Error(`Unknown event type: ${eventType}`)
 

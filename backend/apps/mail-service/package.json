@@ -1,0 +1,22 @@
+{
+  "name": "mail-service",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@repo/redis": "*",
+    "@types/dotenv": "^6.1.1",
+    "dotenv": "^16.0.3",
+    "nodemailer": "^10.0.14"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^8.0.2"
+  }
+}

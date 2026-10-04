@@ -143,6 +143,7 @@ model Payments {
   id String @id @default(cuid())
   orderId String @unique
   status PaymentStatus
+  stripeID String @default("")
   order Order @relation(fields: [orderId] , references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

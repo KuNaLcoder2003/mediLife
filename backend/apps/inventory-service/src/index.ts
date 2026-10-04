@@ -131,10 +131,54 @@ await redisClient.subscribe('INVENTORY_UPDATE', async (message) => {
                             console.log('HERE IN INVENTOY SERVICE')
                             throw new ProductStockUpdateError({ productId: product.productId, orderId: subscribedData.payload.orderId, userId: subscribedData.payload.userId })
                         }
+                        await tx.events.create({
+                            data: {
+                                eventType: "INITIATE_REFUND",
+                                aggregateId: orderId,
+                                aggregateType: "PAYMENTS",
+                                payload: {
+                                    orderId: orderId,
+                                    userId: userId,
+                                    products: products,
+                                },
+                                status: "CREATED",
+                                attempts: 0
+                            }
+                        })
                     }
-                })
+                }, { maxWait: 5000, timeout: 10000 })
             } catch (error) {
-                console.log(error)
+                if (error instanceof ProductStockUpdateError) {
+                    await prisma.$transaction(async (tx) => {
+                        await tx.order.update({
+                            where: {
+                                id: error.product.orderId
+                            },
+                            data: {
+                                status: "CANCELLED" // instead of cancelled do STOCK_FAILURE
+                            }
+                        })
+                        await tx.payments.update({
+                            where: {
+                                orderId: error.product.orderId
+                            },
+                            data: {
+                                status: "CANCELLED" // instead of cancelled do Refund
+                            }
+                        })
+                    }, { maxWait: 5000, timeout: 10000 })
+                    await prisma.events.create({
+                        data: {
+                            aggregateId: error.product.orderId,
+                            aggregateType: "INVENTORY",
+                            eventType: "STOCK_FAILURE",
+                            payload: { event: "RESTOCK_FAILURE", data: { message: "Some of the products are not updated", products: error.product.productId } },
+                            status: "PENDING",
+                            attempts: 0
+                        }
+                    })
+                }
+
             }
             break;
     }

@@ -10,6 +10,9 @@ const stripe = new Stripe(STRIPE_SECRET)
 
 
 const redisClient = await getRedisClient()
+const duplicate = redisClient.duplicate()
+duplicate.on('error', (err) => console.error('Redis duplicate error', err))
+await duplicate.connect()
 
 const getProducts = async (items: { productId: string, quantity: number }[]) => {
     const ids = items.map(item => item.productId)
@@ -61,7 +64,6 @@ const getProducts = async (items: { productId: string, quantity: number }[]) => 
 redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
     const { payload } = JSON.parse(mesage) as EventPayload
     try {
-
         console.log('Subscribed data in Payment Service is : ', payload)
         const items = await getProducts(payload.products)
         const url = await stripe.checkout.sessions.create({
@@ -113,5 +115,76 @@ redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
                 attempts: 0
             }
         })
+    }
+})
+
+
+duplicate.subscribe("INITIATE_REFUND", async (message) => {
+    const { payload } = JSON.parse(message) as EventPayload
+    try {
+        if (!payload) {
+            return
+        }
+        const { userId, orderId, products } = payload
+        const user = await prisma.users.findUnique({
+            where: {
+                id: userId
+            }
+        })
+        const payment = await prisma.payments.findUnique({
+            where: {
+                orderId: orderId,
+                status: "COMPLETED"
+            },
+            select: {
+                stripeID: true,
+                id: true,
+            }
+        })
+        if (!payment) {
+            return
+        }
+        const refund = await stripe.refunds.create({
+            payment_intent: payment.stripeID
+        })
+
+
+        await prisma.$transaction(async (tx) => {
+            await tx.payments.update({
+                where: {
+                    id: payment.id
+                },
+                data: {
+                    status: "CANCELLED" // => REFUND_INITIATED
+                }
+            })
+            await tx.events.create({
+                data: {
+                    eventType: "MAIL_USER",
+                    aggregateId: orderId,
+                    aggregateType: "PAYMENTS",
+                    payload: {
+                        refundId: refund ? refund.id : "",
+                        orderId: orderId,
+                        userId: userId,
+                        eventType: "REFUND_MAIL",
+                        userEmail: user?.email
+                    },
+                    status: "CREATED",
+                    attempts: 0
+                }
+            })
+        })
+
+        // if (!refund) {
+        //     // mail to user about that refund could not be generated , please try again or contact support@medilinks.com
+
+
+        // } else {
+        //     // mail to user about that refund generated , and provide refund id , for any furthur queries , please contact support@medilinks.com
+        // }
+
+    } catch (error) {
+
     }
 })
