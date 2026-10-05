@@ -157,10 +157,21 @@ export const cancelOrderHandler = async (req: any, res: express.Response) => {
             })
             return
         }
+        const orderdProducts = (await prisma.orderdProducts.findMany({
+            where: {
+                orderId: orderId
+            },
+            select: {
+                productId: true
+            }
+        })).map(item => {
+            return { ...item, quantity: 3 }
+        })
         const result = await prisma.$transaction(async (tx) => {
             const order = await tx.order.update({
                 where: {
-                    id: orderId
+                    id: orderId,
+                    userId: userId,
                 },
                 data: {
                     status: "CANCELLED"
@@ -175,7 +186,7 @@ export const cancelOrderHandler = async (req: any, res: express.Response) => {
                         orderId: orderId,
                         status: "CANCELLED",
                         eventType: "CANCEL_ORDER",
-                        products: products
+                        products: orderdProducts
                     },
                     eventType: "INVENTORY_UPDATE",
                     status: "CREATED",
@@ -192,7 +203,7 @@ export const cancelOrderHandler = async (req: any, res: express.Response) => {
             return
         }
         res.status(200).json({
-            message: "Cancellation proceesed",
+            message: "Cancellation processed",
             valid: true
         })
     } catch (error) {

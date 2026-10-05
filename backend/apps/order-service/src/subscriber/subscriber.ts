@@ -63,7 +63,8 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                                 orderId: subscribedData.payload.orderId,
                                 userId: subscribedData.payload.userId,
                                 products: subscribedData.payload.products,
-                                eventType: "ORDER_CONFIRM_MAIL"
+                                eventType: "ORDER_CONFIRM_MAIL",
+                                userEmail: ""
                             },
                             aggregateId: subscribedData.payload.orderId,
                             aggregateType: "ORDER_MAIL",

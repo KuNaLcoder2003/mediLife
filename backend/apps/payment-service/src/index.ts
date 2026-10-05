@@ -85,6 +85,7 @@ redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
                         orderId: payload.orderId,
                         expiresAt: new Date(Date.now() + 30 * 60 * 1000),
                         status: "PENDING",
+                        stripeID: url.id
                     }
                 })
 
@@ -120,7 +121,9 @@ redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
 
 
 duplicate.subscribe("INITIATE_REFUND", async (message) => {
+    console.log('Subscribe to INITIATE_REFUND')
     const { payload } = JSON.parse(message) as EventPayload
+    console.log(payload)
     try {
         if (!payload) {
             return
@@ -141,13 +144,27 @@ duplicate.subscribe("INITIATE_REFUND", async (message) => {
                 id: true,
             }
         })
+        console.log(payment)
         if (!payment) {
             return
         }
+        const session = await stripe.checkout.sessions.retrieve(
+            payment.stripeID
+        );
+
+        if (!session.payment_intent) {
+            throw new Error("No PaymentIntent found for this Checkout Session");
+        }
+
         const refund = await stripe.refunds.create({
-            payment_intent: payment.stripeID,
-            metadata: { orderId: orderId, userId: userId, products: JSON.stringify(products) }
-        })
+            payment_intent: session.payment_intent as string,
+            metadata: {
+                orderId,
+                userId,
+                products: JSON.stringify(products)
+            }
+        });
+        console.log('Stripe : ', refund!)
 
 
         await prisma.$transaction(async (tx) => {
@@ -186,6 +203,6 @@ duplicate.subscribe("INITIATE_REFUND", async (message) => {
         // }
 
     } catch (error) {
-
+        console.log(error)
     }
 })

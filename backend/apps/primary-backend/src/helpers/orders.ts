@@ -44,6 +44,7 @@ export const getUserOrder = async (userId: string) => {
                 createdAt: true,
                 trackingId: true,
                 address: true,
+                status: true,
                 orderedProducts: {
                     select: {
                         product: {
