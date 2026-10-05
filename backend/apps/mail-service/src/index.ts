@@ -199,6 +199,64 @@ const refundConfirmedHtml = (orderId: string, refundId: string, refundAmount: nu
 </html>
 `;
 }
+const confirmOrderEmail = (orderId: string) => {
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Confirmed</title>
+</head>
+
+<body style="margin: 0; padding: 0; background-color: #f5f7fa; font-family: Arial, Helvetica, sans-serif; color: #333333;">
+
+  <div style="max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
+
+    <div style="padding: 24px; text-align: center; border-bottom: 1px solid #eeeeee;">
+      <h2 style="margin: 0; color: #222222;">Order Confirmed</h2>
+    </div>
+
+    <div style="padding: 32px 24px;">
+
+      <p style="font-size: 16px; line-height: 1.6; margin-top: 0;">
+        Thank you for your order! Your order has been successfully placed.
+      </p>
+
+      <div style="background-color: #f8f9fb; padding: 16px; border-radius: 6px; margin: 24px 0;">
+        <p style="margin: 0; font-size: 14px;">
+          <strong>Order ID:</strong> ${orderId}
+        </p>
+      </div>
+
+      <p style="font-size: 14px; line-height: 1.6; color: #555555;">
+        We are currently processing your order. Once your order has been shipped,
+        we will share the tracking ID and tracking link with you so you can easily
+        track your delivery.
+      </p>
+
+      <p style="font-size: 14px; line-height: 1.6; color: #555555;">
+        If you have any questions regarding your order, please contact our support
+        team at
+        <a
+          href="mailto:support@medilinks.au.in"
+          style="color: #2563eb; text-decoration: none;"
+        >
+          support@medilinks.au.in
+        </a>.
+      </p>
+
+      <p style="font-size: 14px; margin-bottom: 0;">
+        Regards,<br />
+        <strong>Medilinks</strong>
+      </p>
+
+    </div>
+
+  </div>
+
+</body>
+</html>`
+}
 
 const mail = async (emailIds: mailId[], subject: string, html: string, attachments?: Attachment[]) => {
     const info = await transporter.sendMail({
@@ -215,6 +273,7 @@ const mail = async (emailIds: mailId[], subject: string, html: string, attachmen
 redisClient.subscribe("MAIL_USER", async (message) => {
     const data = JSON.parse(message) as EventPayload
     const { payload } = data
+    console.log(payload)
     switch (payload.eventType) {
         case "REFUND_MAIL":
             await mail([payload.userEmail], `${payload.refundId ? `Refund Initiated against order ${payload.orderId}` : `Unable to Initiate refund against order ${payload.orderId}`}`, payload.refundId ? refundInitiatedHtml(payload.orderId, payload.refundId) : refundNotInitiatedHtml(payload.orderId))
@@ -222,5 +281,8 @@ redisClient.subscribe("MAIL_USER", async (message) => {
         case "CONFIRM_REFUND_MAIL":
             await mail([payload.userEmail], `Refund processed againts order ${payload.orderId}`, refundConfirmedHtml(payload.orderId, payload.refundId, payload.amount!))
             break
+        case "ORDER_CONFIRM_MAIL":
+            await mail(["kunalindia59@gmail.com"], `Order Confirmed ${payload.orderId}`, confirmOrderEmail(payload.orderId))
+            break;
     }
 })

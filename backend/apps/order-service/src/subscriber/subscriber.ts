@@ -56,6 +56,21 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                             status: "PACKING"
                         }
                     })
+                    await tx.events.create({
+                        data: {
+                            eventType: "MAIL_USER",
+                            payload: {
+                                orderId: subscribedData.payload.orderId,
+                                userId: subscribedData.payload.userId,
+                                products: subscribedData.payload.products,
+                                eventType: "ORDER_CONFIRM_MAIL"
+                            },
+                            aggregateId: subscribedData.payload.orderId,
+                            aggregateType: "ORDER_MAIL",
+                            attempts: 0,
+                            status: "CREATED"
+                        }
+                    })
                 })
                 break;
         }

@@ -18,7 +18,7 @@ export type Event = {
 export const getOutboxevents = async () => {
     const events = await prisma.events.findMany({
         where: {
-            status: "PENDING"
+            OR: [{ status: "CREATED" }, { status: "PENDING" }]
         },
         take: 50,
         orderBy: {
