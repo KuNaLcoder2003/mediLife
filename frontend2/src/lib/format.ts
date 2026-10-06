@@ -24,3 +24,15 @@ export function errorMessage(err: unknown, fallback = "Something went wrong. Try
 export function firstName(name: string | undefined | null): string {
   return (name ?? "").trim().split(/\s+/)[0] ?? "";
 }
+
+const dateFormatter = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" });
+
+export function formatDate(value: string | Date): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return Number.isNaN(date.getTime()) ? "" : dateFormatter.format(date);
+}
+
+/** Last 8 characters of an ID, for display ("#8Q2ZXH6"). The full ID stays on the invoice. */
+export function shortId(id: string): string {
+  return id.slice(-8).toUpperCase();
+}

@@ -39,10 +39,10 @@ export default function StoreLayout() {
             </Link>
             {status === "authenticated" ? (
               <div className="ml-account">
-                <span className="ml-account-name">
+                <Link to="/account" className="ml-account-name" aria-label="Your account">
                   <Icon name="user" size={18} />
-                  {firstName(user?.name) || "Account"}
-                </span>
+                  <span className="ml-account-label">{firstName(user?.name) || "Account"}</span>
+                </Link>
                 <button type="button" className="ml-btn ml-btn--ghost ml-btn--sm" onClick={() => void signOut()}>
                   Sign out
                 </button>

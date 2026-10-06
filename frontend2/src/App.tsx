@@ -8,6 +8,8 @@ import HomePage from "./pages/store/HomePage";
 import ProductPage from "./pages/store/ProductPage";
 import ProductsPage from "./pages/store/ProductsPage";
 import AuthCallbackPage from "./pages/store/AuthCallbackPage";
+import AccountPage from "./pages/AccountPage";
+import OrderDetailPage from "./pages/OrderDetailPage";
 
 export default function App() {
   return (
@@ -35,6 +37,8 @@ export default function App() {
           {/* Signed-in users only */}
           <Route element={<ProtectedRoute />}>
             <Route path="checkout" element={<CheckoutPage />} />
+            <Route path="account" element={<AccountPage />} />
+            <Route path="account/orders/:orderId" element={<OrderDetailPage />} />
           </Route>
         </Route>
 

@@ -29,7 +29,7 @@ export interface Address {
   createdAt?: string;
 }
 
-/** GET /users/me */
+/** GET /users/me (add `mobile` and `country` to the server's select for the profile form). */
 export interface User {
   id: string;
   email: string;
@@ -37,7 +37,18 @@ export interface User {
   createdAt: string;
   gender: string | null;
   age: number | null;
+  mobile?: string | null;
+  country?: string | null;
   addresses: Address[];
+}
+
+/** Body for PATCH /users/me. Email is not editable. */
+export interface ProfileUpdate {
+  name: string;
+  gender: Gender | null;
+  age: number | null;
+  mobile: string | null;
+  country: string | null;
 }
 
 export type Gender = "MALE" | "FEMALE";
@@ -65,4 +76,41 @@ export interface NewAddressInput {
 export interface NewOrderPayload {
   products: { productId: string; quantity: number }[];
   addressId: string;
+}
+
+/* ---------------- Orders ---------------- */
+
+export type OrderStatus =
+  | "CREATED"
+  | "CONFIRMED"
+  | "PACKING"
+  | "SHIPPED"
+  | "DISPATCHED"
+  | "DELIVERED"
+  | "CANCELLED"
+  | "RETURNED";
+
+export interface OrderLine {
+  product: {
+    id: string;
+    productName: string;
+    productDescription: string;
+    images: ProductImage[];
+  };
+  /** Not in the schema yet. Shown on the order page and invoice once the server returns them. */
+  quantity?: number;
+  unitPrice?: number;
+}
+
+/** Shape returned by POST /order/getOrders and POST /order/get/:orderId */
+export interface Order {
+  id: string;
+  userId: string;
+  trackingId: string;
+  orderTotal: number;
+  createdAt: string;
+  /** Add `status: true` to the server's select to show it. */
+  status?: OrderStatus;
+  orderedProducts: OrderLine[];
+  address: Address;
 }

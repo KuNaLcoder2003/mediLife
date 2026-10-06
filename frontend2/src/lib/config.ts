@@ -11,3 +11,15 @@ export const STORE_NAME = "Medlinks";
 /** Same key the old HomePage/WebSocket code read, so existing code keeps working. */
 export const TOKEN_STORAGE_KEY = "accessToken";
 export const CART_STORAGE_KEY = "medlinks.cart";
+
+/**
+ * Seller details printed on invoices. Leave a field empty to omit it.
+ * Built-in PDF fonts can't draw every currency symbol (₹ for example):
+ * see components/store/invoice/InvoiceDocument.tsx if you change CURRENCY.
+ */
+export const SELLER = {
+    name: STORE_NAME,
+    addressLines: [] as string[],
+    email: "",
+    taxId: "",
+};

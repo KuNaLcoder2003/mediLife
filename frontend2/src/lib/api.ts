@@ -1,5 +1,14 @@
-import { request } from "./http";
-import type { Category, NewAddressInput, NewOrderPayload, Product, SignUpDetails, User } from "./types";
+import { ApiError, request } from "./http";
+import type {
+  Category,
+  NewAddressInput,
+  NewOrderPayload,
+  Order,
+  Product,
+  ProfileUpdate,
+  SignUpDetails,
+  User,
+} from "./types";
 
 export const authApi = {
   async signIn(email: string, password: string): Promise<string> {
@@ -53,7 +62,12 @@ export const userApi = {
     return { ...data.user, addresses: data.user.addresses ?? [] };
   },
 
-  /** Route exists (POST /users/address) but has no controller yet. */
+  /** Needs `usersRouter.patch('/me', authMiddleware, updateUserDetails)` on the server. */
+  async updateProfile(update: ProfileUpdate): Promise<void> {
+    await request("/users/me", { method: "PATCH", body: update, auth: true });
+  },
+
+  /** POST /users/address */
   async addAddress(input: NewAddressInput): Promise<void> {
     await request("/users/address", { method: "POST", body: input, auth: true });
   },
@@ -74,5 +88,43 @@ export const orderApi = {
       auth: true,
     });
     return { message: data.message ?? "Order placed", orderId: data.orderId };
+  },
+
+  /**
+   * POST /order/cancel. Sends only the order ID: the server must look up the
+   * order's products itself (the client can't be trusted with quantities).
+   */
+  async cancel(orderId: string): Promise<string> {
+    const data = await request<{ message?: string }>("/order/cancel", {
+      method: "POST",
+      body: { orderId },
+      auth: true,
+    });
+    return data.message ?? "Order cancelled";
+  },
+
+  /** POST /order/getOrders. The server answers 404 when there are none, so that becomes []. */
+  async list(): Promise<Order[]> {
+    try {
+      const data = await request<{ orders: Order[] }>("/order/getOrders", { method: "POST", auth: true });
+      return [...(data.orders ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return [];
+      throw err;
+    }
+  },
+
+  /** POST /order/get/:orderId. Resolves to null when the order doesn't exist. */
+  async get(orderId: string): Promise<Order | null> {
+    try {
+      const data = await request<{ order: Order }>(`/order/get/${encodeURIComponent(orderId)}`, {
+        method: "POST",
+        auth: true,
+      });
+      return data.order;
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 404 || err.status === 400)) return null;
+      throw err;
+    }
   },
 };
