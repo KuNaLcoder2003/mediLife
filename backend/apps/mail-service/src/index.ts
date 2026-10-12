@@ -5,28 +5,28 @@ const redisClient = await getRedisClient()
 dotenv.config()
 type mailId = string
 type Attachment = {
-    fileName: string,
-    content: Buffer
-    contentType: string
+  fileName: string,
+  content: Buffer
+  contentType: string
 }
 
 type EventPayload = {
-    eventType: string,
-    eventId: string,
-    payload: { orderId: string, userId: string, eventType: string, refundId: string, userEmail: string, amount?: number },
-    aggregateId: string,
-    aggregateType: string
+  eventType: string,
+  eventId: string,
+  payload: { orderId: string, userId: string, eventType: string, refundId: string, userEmail: string, amount?: number },
+  aggregateId: string,
+  aggregateType: string
 }
 const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD,
-    },
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
 });
 
 const refundInitiatedHtml = (orderId: string, refundId: string) => {
-    return `
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -79,7 +79,7 @@ const refundInitiatedHtml = (orderId: string, refundId: string) => {
 }
 
 const refundNotInitiatedHtml = (orderId: string) => {
-    return `
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -130,7 +130,7 @@ const refundNotInitiatedHtml = (orderId: string) => {
 }
 
 const refundConfirmedHtml = (orderId: string, refundId: string, refundAmount: number) => {
-    return `
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -200,7 +200,7 @@ const refundConfirmedHtml = (orderId: string, refundId: string, refundAmount: nu
 `;
 }
 const confirmOrderEmail = (orderId: string) => {
-    return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8" />
@@ -259,30 +259,30 @@ const confirmOrderEmail = (orderId: string) => {
 }
 
 const mail = async (emailIds: mailId[], subject: string, html: string, attachments?: Attachment[]) => {
-    const info = await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: emailIds,
-        subject: subject,
-        html: html,
-        attachments: attachments
-    })
-    return { info }
+  const info = await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: emailIds,
+    subject: subject,
+    html: html,
+    attachments: attachments
+  })
+  return { info }
 }
 
 
 redisClient.subscribe("MAIL_USER", async (message) => {
-    const data = JSON.parse(message) as EventPayload
-    const { payload } = data
-    console.log(payload)
-    switch (payload.eventType) {
-        case "REFUND_MAIL":
-            await mail([payload.userEmail], `${payload.refundId ? `Refund Initiated against order ${payload.orderId}` : `Unable to Initiate refund against order ${payload.orderId}`}`, payload.refundId ? refundInitiatedHtml(payload.orderId, payload.refundId) : refundNotInitiatedHtml(payload.orderId))
-            break;
-        case "CONFIRM_REFUND_MAIL":
-            await mail([payload.userEmail], `Refund processed againts order ${payload.orderId}`, refundConfirmedHtml(payload.orderId, payload.refundId, payload.amount!))
-            break
-        case "ORDER_CONFIRM_MAIL":
-            await mail(["kunalindia59@gmail.com"], `Order Confirmed ${payload.orderId}`, confirmOrderEmail(payload.orderId))
-            break;
-    }
+  const data = JSON.parse(message) as EventPayload
+  const { payload } = data
+  console.log(payload)
+  switch (payload.eventType) {
+    case "REFUND_MAIL":
+      await mail([payload.userEmail], `${payload.refundId ? `Refund Initiated against order ${payload.orderId}` : `Unable to Initiate refund against order ${payload.orderId}`}`, payload.refundId ? refundInitiatedHtml(payload.orderId, payload.refundId) : refundNotInitiatedHtml(payload.orderId))
+      break;
+    case "CONFIRM_REFUND_MAIL":
+      await mail([payload.userEmail], `Refund processed againts order ${payload.orderId}`, refundConfirmedHtml(payload.orderId, payload.refundId, payload.amount!))
+      break
+    case "ORDER_CONFIRM_MAIL":
+      await mail(["kunalindia59@gmail.com"], `Order Confirmed ${payload.orderId}`, confirmOrderEmail(payload.orderId))
+      break;
+  }
 })

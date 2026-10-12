@@ -69,7 +69,7 @@ redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
         const url = await stripe.checkout.sessions.create({
             mode: "payment",
             line_items: items.line_items,
-            success_url: 'http://localhost:5173/success',
+            success_url: 'http://localhost:5173/success?orderId=' + payload.orderId,
             cancel_url: 'http://localhost:5173/fail',
             metadata: {
                 orderId: payload.orderId,

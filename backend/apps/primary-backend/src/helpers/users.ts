@@ -13,7 +13,7 @@ export const createUser = async (userDetails: UserDetails) => {
     let userObject = { ...userDetails }
     if (userDetails.password) {
         const hashedPassword = await bcrypt.hash(userDetails.password as string, 10)
-        userDetails.password = hashedPassword
+        userObject.password = hashedPassword
     }
     const newUser = await prisma.$transaction(async (tx) => {
         const user = await tx.users.create({
