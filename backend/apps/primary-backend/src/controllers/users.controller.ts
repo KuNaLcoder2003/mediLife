@@ -4,6 +4,12 @@ import type { UserDetails } from "../types/index.js"
 import { createUser, generateToken, getUserAuth } from "../helpers/users.js"
 import crypto from "crypto"
 
+type address = {
+    postalCode: string,
+    addressLine1: string
+    addressLine2: string
+}
+
 export const getUserDetails = async (req: any, res: express.Response) => {
     try {
         const id = req.id
@@ -177,10 +183,27 @@ export const signIn = async (req: express.Request, res: express.Response) => {
 export const addAddressHandler = async (req: any, res: express.Response) => {
     try {
         const userId = req.id;
-        const address = req.body
+        const address = req.body as address
 
         const newAddress = await prisma.$transaction(async (tx) => {
-
+            const addr = await tx.address.create({
+                data: {
+                    userId: userId,
+                    ...address
+                }
+            })
+            return addr
+        }, { maxWait: 5000, timeout: 10000 })
+        if (!newAddress) {
+            res.status(403).json({
+                message: "Unable to add address",
+                valid: false
+            })
+            return
+        }
+        res.status(200).json({
+            message: "Address added succesfully",
+            valid: true
         })
     } catch (error) {
         res.status(500).json({
