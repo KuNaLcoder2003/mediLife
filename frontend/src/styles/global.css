@@ -1,0 +1,11 @@
+   :root {
+     --brand: #0f7c6b;      
+     --brand-tint: #eef6f3;
+     --ink: #12261f;        
+     --muted: #5b6b66;
+     --border: #cfd8d4;
+     --error: #b42318;  --error-bg: #fff5f3;
+     --warn-bg: #fff8ec;
+   }
+   * { box-sizing: border-box; }
+   body { margin: 0; font-family: "Manrope", system-ui, sans-serif; color: var(--ink); }
