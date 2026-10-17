@@ -40,3 +40,7 @@ export const AlertIcon = () => (
 export const EyeIcon = () => (
   <svg {...p}><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
 );
+
+export const MailIcon = () => (
+  <svg {...p} width={28} height={28}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>
+);

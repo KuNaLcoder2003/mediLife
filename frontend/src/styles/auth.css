@@ -129,6 +129,13 @@ a { color: var(--brand); font-weight: 600; text-decoration: none; }
 
 .reset__foot { margin-top: auto; padding: 24px 0 8px; text-align: center; font-size: 14px; color: var(--muted); }
 
+/* Forgot password */
+.sent { text-align: center; margin-top: 48px; display: grid; justify-items: center; gap: 4px; }
+.sent__icon { width: 64px; height: 64px; border-radius: 50%; background: var(--brand-tint);
+              color: var(--brand); display: grid; place-items: center; margin-bottom: 16px; }
+.sent h1 { margin: 0 0 8px; }
+.sent .btn-outline { margin-top: 16px; }
+
 @media (max-width: 768px) {
   .login { grid-template-columns: 1fr; }
   .login__brand { display: none; }

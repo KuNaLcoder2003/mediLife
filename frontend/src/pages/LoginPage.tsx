@@ -85,7 +85,7 @@ const onGoogle = async () => {
           <div className="password-row">
             <PasswordInput id="password" label="Password" value={password}
               onChange={(e) => setPassword(e.target.value)} />
-            <Link className="forgot" to="/reset-password">Forgot password?</Link>
+            <Link className="forgot" to="/Forgot-password">Forgot password?</Link>
           </div>
 
           <label className="check">

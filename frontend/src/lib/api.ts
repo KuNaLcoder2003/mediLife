@@ -27,4 +27,5 @@ export const authApi = {
     (await post<{ accessToken: string }>("/auth/signup", { userDetails })).accessToken,
 
   googleUrl: async () => (await post<{ url: string }>("/auth/google")).url,
+  forgotPassword: (email: string) => post<{ message?: string }>("/auth/forgot-password", { email }),
 };
