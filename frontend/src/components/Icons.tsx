@@ -24,3 +24,19 @@ export const GoogleIcon = () => (
 export const InfoIcon = () => (
   <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>
 );
+
+export const BackIcon = () => (
+  <svg {...p}><path d="M15 6l-6 6 6 6" /></svg>
+);
+export const CheckIcon = () => (
+  <svg {...p} strokeWidth={2.4}><path d="M5 12l5 5 9-10" /></svg>
+);
+export const CircleIcon = () => (
+  <svg {...p}><circle cx="12" cy="12" r="7" /></svg>
+);
+export const AlertIcon = () => (
+  <svg {...p} width={16} height={16}><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>
+);
+export const EyeIcon = () => (
+  <svg {...p}><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+);
