@@ -5,6 +5,7 @@ import FormInput from "../components/FormInput";
 import PasswordInput from "../components/PasswordInput";
 import PrimaryButton from "../components/PrimaryButton";
 import { GoogleIcon, InfoIcon } from "../components/Icons";
+import { authApi } from "../lib/api";
 
 const COUNTRIES: Record<string, string> = {
   India: "+91", "United States": "+1", "United Kingdom": "+44", UAE: "+971",
@@ -21,6 +22,7 @@ export default function SignupPage() {
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm({ ...form, [key]: e.target.value });
@@ -37,8 +39,35 @@ export default function SignupPage() {
     if (Object.keys(found).length) return;
 
     setLoading(true);
-    // will call the signup API here
+setFormError("");
+try {
+  const token = await authApi.signUp({
+    name: form.name.trim(),
+    email: form.email.trim().toLowerCase(),
+    password: form.password,
+    country: form.country,
+    gender: form.gender || undefined,
+    age: form.age ? Number(form.age) : undefined,
+    mobile: form.mobile ? form.mobile.trim() : undefined,
+    role: "USER",
+    authMode: "CREDENTIALS",
+  });
+  localStorage.setItem("accessToken", token);
+  alert("Account created!"); // temporary
+  } catch (err) {
+  setFormError(err instanceof Error ? err.message : "Your account couldn't be created.");
+  } finally {
+  setLoading(false);
+  }
+
     setLoading(false);
+  };
+  const onGoogle = async () => {
+    try {
+      window.location.assign(await authApi.googleUrl());
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Google sign-in isn't available right now.");
+    }
   };
 
   return (
@@ -116,10 +145,11 @@ export default function SignupPage() {
           </span>
         </label>
 
+        {formError && <p className="field-error">{formError}</p>}
         <PrimaryButton type="submit" loading={loading} disabled={!agreed}>Create account</PrimaryButton>
 
         <div className="divider"><span>or</span></div>
-        <button type="button" className="btn-outline"><GoogleIcon /> Sign up with Google</button>
+        <button type="button" className="btn-outline" onClick={onGoogle}><GoogleIcon /> Sign up with Google</button>
 
         <div className="notice">
           <InfoIcon />
