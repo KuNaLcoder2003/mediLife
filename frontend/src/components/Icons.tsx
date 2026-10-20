@@ -44,3 +44,17 @@ export const EyeIcon = () => (
 export const MailIcon = () => (
   <svg {...p} width={28} height={28}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>
 );
+
+// Admin panel Icons
+export const GridIcon = () => (<svg {...p}><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg>);
+export const BoxIcon = () => (<svg {...p}><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" /><path d="M4 7.5l8 4.5 8-4.5M12 12v9" /></svg>);
+export const TagIcon = () => (<svg {...p}><path d="M3 12V4h8l10 10-8 8L3 12z" /><circle cx="7.5" cy="8.5" r="1" /></svg>);
+export const ClipboardIcon = () => (<svg {...p}><rect x="6" y="4" width="12" height="17" rx="2" /><path d="M9 4h6v3H9z" /></svg>);
+export const UsersIcon = () => (<svg {...p}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0113 0M16 4.5a3.5 3.5 0 010 7M18 14a6.5 6.5 0 013.5 6" /></svg>);
+export const ChartIcon = () => (<svg {...p}><path d="M4 20V4M4 20h16M9 20v-6M14 20V9M19 20v-9" /></svg>);
+export const SlidersIcon = () => (<svg {...p}><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></svg>);
+export const ExternalIcon = () => (<svg {...p}><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5" /></svg>);
+export const SearchIcon = () => (<svg {...p}><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>);
+export const BellIcon = () => (<svg {...p}><path d="M6 16v-5a6 6 0 0112 0v5l2 2H4l2-2z" /><path d="M10 21h4" /></svg>);
+export const RupeeIcon = () => (<svg {...p}><path d="M7 5h10M7 9h10M8 5c4 0 5 1.5 5 4s-1.5 4-5 4l7 6" /></svg>);
+export const TriangleIcon = () => (<svg {...p}><path d="M12 4l9 16H3L12 4z" /><path d="M12 10v4M12 17h.01" /></svg>);

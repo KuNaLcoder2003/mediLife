@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import './styles/global.css'
 import './styles/auth.css'
+import './styles/admin.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
