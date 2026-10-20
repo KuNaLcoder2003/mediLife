@@ -6,7 +6,7 @@ const NAV = [
   { to: "/admin", label: "Dashboard", icon: <GridIcon />, end: true },
   { to: "/admin/products", label: "Products", icon: <BoxIcon /> },
   { to: "/admin/categories", label: "Categories", icon: <TagIcon /> },
-  { to: "/admin/orders", label: "Orders", icon: <ClipboardIcon />, badge: 12 },
+  { to: "/admin/orders", label: "Orders", icon: <ClipboardIcon />},
   { to: "/admin/customers", label: "Customers", icon: <UsersIcon /> },
   { to: "/admin/reports", label: "Reports", icon: <ChartIcon /> },
 ];

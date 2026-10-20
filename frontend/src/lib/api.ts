@@ -19,6 +19,26 @@ async function post<T>(path: string, body?: object): Promise<T> {
   return data as T;
 }
 
+async function get<T>(path: string): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, { credentials: "include" });
+  } catch {
+    throw new Error("Can't reach the server. Check your connection and try again.");
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || data.valid === false) {
+    throw new Error(typeof data?.message === "string" ? data.message : `Request failed (${res.status})`);
+  }
+  return data as T;
+}
+
+export interface Product { id: string; productName: string; quantity: number; price: number; discount: number | null; }
+
+export const productApi = {
+  list: async () => (await get<{ products: Product[] }>("/product/")).products ?? [],
+};
+
 export const authApi = {
   signIn: async (email: string, password: string) =>
     (await post<{ accessToken: string }>("/auth/signin", { email, password })).accessToken,
