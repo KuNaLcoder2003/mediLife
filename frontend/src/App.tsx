@@ -1,11 +1,11 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
-import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import LoginPage from "./pages/store/auth/LoginPage";
+import SignupPage from "./pages/store/auth/SignupPage";
+import ResetPasswordPage from "./pages/store/auth/ResetPasswordPage";
+import ForgotPasswordPage from "./pages/store/auth/ForgotPasswordPage";
 
-import AdminLayout from "./components/admin/AdminLayout";
+import AdminLayout from "./components/Admin/AdminLayout";
 import DashboardPage from "./pages/admin/DashboardPage";
 import ProductsPage from "./pages/admin/ProductsPage";
 import AddProductPage from "./pages/admin/AddProductPage";
@@ -23,11 +23,11 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         {/* Admin block routes */}
         <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<DashboardPage />} />
-        <Route path="products" element={<ProductsPage />} />
-        <Route path="products/new" element={<AddProductPage />} />
-        <Route path="*" element={<h1 className="soon">Coming soon</h1>} />
-</Route>
+          <Route index element={<DashboardPage />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="products/new" element={<AddProductPage />} />
+          <Route path="*" element={<h1 className="soon">Coming soon</h1>} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

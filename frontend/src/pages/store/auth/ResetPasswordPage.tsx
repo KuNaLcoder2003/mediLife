@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import PasswordInput from "../components/PasswordInput";
-import PrimaryButton from "../components/PrimaryButton";
-import { BackIcon, CheckIcon, CircleIcon } from "../components/Icons";
+import PasswordInput from "../components/store/PasswordInput";
+import PrimaryButton from "../../../components/store/auth/PrimaryButton";
+import { BackIcon, CheckIcon, CircleIcon } from "../../../components/store/auth/Icons";
 
 export default function ResetPasswordPage() {
   const [params] = useSearchParams();

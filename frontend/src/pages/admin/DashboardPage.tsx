@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { PlusIcon, DollarIcon, ClipboardIcon, ChartIcon, TriangleIcon, BoxIcon } from "../../components/Icons";
+import { PlusIcon, DollarIcon, ClipboardIcon, ChartIcon, TriangleIcon, BoxIcon } from "../../components/store/auth/Icons";
 import { productApi, type Product } from "../../lib/api";
 
 const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
@@ -46,11 +46,11 @@ export default function DashboardPage() {
   const stats = STATS.map((s) =>
     s.label === "Low-stock products"
       ? {
-          ...s,
-          value: products ? String(low.length) : "—",
-          delta: products ? `${outOfStock} out of stock` : "",
-          note: products && low.length > 0 ? "· restock soon" : "",
-        }
+        ...s,
+        value: products ? String(low.length) : "—",
+        delta: products ? `${outOfStock} out of stock` : "",
+        note: products && low.length > 0 ? "· restock soon" : "",
+      }
       : s,
   );
 

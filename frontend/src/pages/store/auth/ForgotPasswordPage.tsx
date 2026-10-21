@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import FormInput from "../components/FormInput";
-import PrimaryButton from "../components/PrimaryButton";
-import { BackIcon, MailIcon } from "../components/Icons";
-import { authApi } from "../lib/api";
+import PrimaryButton from "../../components/store/auth/PrimaryButton";
+import { BackIcon, MailIcon } from "../../components/store/auth/Icons";
+import { authApi } from "../../lib/api";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");

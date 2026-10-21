@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import FormInput from "../components/FormInput";
-import PasswordInput from "../components/PasswordInput";
-import PrimaryButton from "../components/PrimaryButton";
-import { GoogleIcon, InfoIcon } from "../components/Icons";
-import { authApi } from "../lib/api";
+import PasswordInput from "../components/store/PasswordInput";
+import PrimaryButton from "../../../components/store/auth/PrimaryButton";
+import { GoogleIcon, InfoIcon } from "../../../components/store/auth/Icons";
+import { authApi } from "../../../lib/api";
 
 const COUNTRIES: Record<string, string> = {
   India: "+91", "United States": "+1", "United Kingdom": "+44", UAE: "+971",
@@ -39,26 +39,26 @@ export default function SignupPage() {
     if (Object.keys(found).length) return;
 
     setLoading(true);
-setFormError("");
-try {
-  const token = await authApi.signUp({
-    name: form.name.trim(),
-    email: form.email.trim().toLowerCase(),
-    password: form.password,
-    country: form.country,
-    gender: form.gender || undefined,
-    age: form.age ? Number(form.age) : undefined,
-    mobile: form.mobile ? form.mobile.trim() : undefined,
-    role: "USER",
-    authMode: "CREDENTIALS",
-  });
-  localStorage.setItem("accessToken", token);
-  alert("Account created!"); // temporary
-  } catch (err) {
-  setFormError(err instanceof Error ? err.message : "Your account couldn't be created.");
-  } finally {
-  setLoading(false);
-  }
+    setFormError("");
+    try {
+      const token = await authApi.signUp({
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+        country: form.country,
+        gender: form.gender || undefined,
+        age: form.age ? Number(form.age) : undefined,
+        mobile: form.mobile ? form.mobile.trim() : undefined,
+        role: "USER",
+        authMode: "CREDENTIALS",
+      });
+      localStorage.setItem("accessToken", token);
+      alert("Account created!"); // temporary
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Your account couldn't be created.");
+    } finally {
+      setLoading(false);
+    }
 
     setLoading(false);
   };

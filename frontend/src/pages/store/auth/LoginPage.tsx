@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import FormInput from "../components/FormInput";
-import PasswordInput from "../components/PasswordInput";
-import PrimaryButton from "../components/PrimaryButton";
-import { ShieldIcon, DocIcon, LockIcon, RefreshIcon, GoogleIcon } from "../components/Icons";
-import { authApi } from "../lib/api";
+import PasswordInput from "../components/store/PasswordInput";
+import PrimaryButton from "../../../components/store/auth/PrimaryButton";
+import { ShieldIcon, DocIcon, LockIcon, RefreshIcon, GoogleIcon } from "../../../components/store/auth/Icons";
+import { authApi } from "../../../lib/api";
 
 const features = [
   { icon: <ShieldIcon />, title: "Genuine products only", text: "Sourced from verified manufacturers and authorised distributors." },
@@ -21,29 +21,29 @@ export default function LoginPage() {
   const [success, setSuccess] = useState("");
 
   const onSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!/^\S+@\S+\.\S+$/.test(email)) return setError("Enter a valid email address.");
-  if (!password) return setError("Enter your password.");
-  setError("");
-  setLoading(true);
-  try {
-    const token = await authApi.signIn(email.trim().toLowerCase(), password);
-    localStorage.setItem("accessToken", token);
-    setSuccess("Signed in successfully!");
-  } catch (err) {
-    setError(err instanceof Error ? err.message : "Sign in failed.");
-  } finally {
-    setLoading(false);
-  }
-};
+    e.preventDefault();
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setError("Enter a valid email address.");
+    if (!password) return setError("Enter your password.");
+    setError("");
+    setLoading(true);
+    try {
+      const token = await authApi.signIn(email.trim().toLowerCase(), password);
+      localStorage.setItem("accessToken", token);
+      setSuccess("Signed in successfully!");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-const onGoogle = async () => {
-  try {
-    window.location.assign(await authApi.googleUrl());
-  } catch (err) {
-    setError(err instanceof Error ? err.message : "Google sign-in isn't available right now.");
-  }
-};
+  const onGoogle = async () => {
+    try {
+      window.location.assign(await authApi.googleUrl());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in isn't available right now.");
+    }
+  };
 
   return (
     <div className="login">

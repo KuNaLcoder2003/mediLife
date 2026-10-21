@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import PrimaryButton from "../../components/PrimaryButton";
+import PrimaryButton from "../../components/store/auth/PrimaryButton";
 import { adminProductApi, type Category } from "../../lib/api";
 
 const money = (n: number) =>

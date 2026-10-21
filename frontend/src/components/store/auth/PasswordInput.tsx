@@ -1,6 +1,6 @@
 import { useState } from "react";
-import FormInput from "./FormInput";
-import { EyeIcon } from "./Icons";
+import FormInput from "./auth/FormInput";
+import { EyeIcon } from "./auth/Icons";
 
 export default function PasswordInput(props: React.ComponentProps<typeof FormInput>) {
   const [show, setShow] = useState(false);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BellIcon, SearchIcon } from "../Icons";
+import { BellIcon, SearchIcon } from "../store/auth/Icons";
 import { productApi, type Product } from "../../lib/api";
 export default function Topbar() {
   const [q, setQ] = useState("");
