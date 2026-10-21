@@ -113,6 +113,13 @@
 .low .icon-box { background: #f3f7f5; border: 0; color: var(--muted); }
 .empty { color: var(--muted); margin: 0; padding: 12px 0; font-size: 14px; }
 
+.search__results { position: absolute; top: 52px; left: 0; right: 0; z-index: 10; list-style: none; margin: 0; padding: 6px;
+                   background: #fff; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+.search__results li a { display: flex; justify-content: space-between; padding: 10px 12px; border-radius: 8px; color: var(--ink); font-weight: 500; }
+.search__results li a:hover { background: var(--brand-tint); }
+.search__results small { color: var(--muted); }
+.search__results .empty { padding: 10px 12px; }
+
 /* Smaller screens */
 @media (max-width: 1100px) {
   .stats { grid-template-columns: repeat(2, 1fr); }

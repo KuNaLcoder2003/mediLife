@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { PlusIcon, RupeeIcon, ClipboardIcon, ChartIcon, TriangleIcon, BoxIcon } from "../../components/Icons";
+import { PlusIcon, DollarIcon, ClipboardIcon, ChartIcon, TriangleIcon, BoxIcon } from "../../components/Icons";
 import { productApi, type Product } from "../../lib/api";
 
 const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
@@ -10,7 +10,7 @@ const LOW_STOCK_LIMIT = 20;
 
 // Cards that still need a backend endpoint show "—" instead of fake numbers.
 const STATS = [
-  { label: "Revenue", value: "—", icon: <RupeeIcon />, tone: "green", kind: "up", delta: "", note: "Waiting for backend data" },
+  { label: "Revenue", value: "—", icon: <DollarIcon />, tone: "green", kind: "up", delta: "", note: "Waiting for backend data" },
   { label: "Orders", value: "—", icon: <ClipboardIcon />, tone: "blue", kind: "up", delta: "", note: "Waiting for backend data" },
   { label: "Avg. order value", value: "—", icon: <ChartIcon />, tone: "purple", kind: "down", delta: "", note: "Waiting for backend data" },
   { label: "Low-stock products", value: "—", icon: <TriangleIcon />, tone: "amber", kind: "warn", delta: "", note: "" },

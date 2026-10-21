@@ -36,7 +36,11 @@ async function get<T>(path: string): Promise<T> {
 export interface Product { id: string; productName: string; quantity: number; price: number; discount: number | null; }
 
 export const productApi = {
-  list: async () => (await get<{ products: Product[] }>("/product/")).products ?? [],
+  list: async (name?: string) => {
+    const q = name?.trim();
+    const path = q ? `/product/?name=${encodeURIComponent(q)}` : "/product/";
+    return (await get<{ products: Product[] }>(path)).products ?? [];
+  },
 };
 
 export const authApi = {

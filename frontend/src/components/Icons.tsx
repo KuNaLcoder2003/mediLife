@@ -56,5 +56,7 @@ export const SlidersIcon = () => (<svg {...p}><path d="M4 7h10M18 7h2M4 17h2M10 
 export const ExternalIcon = () => (<svg {...p}><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5" /></svg>);
 export const SearchIcon = () => (<svg {...p}><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>);
 export const BellIcon = () => (<svg {...p}><path d="M6 16v-5a6 6 0 0112 0v5l2 2H4l2-2z" /><path d="M10 21h4" /></svg>);
-export const RupeeIcon = () => (<svg {...p}><path d="M7 5h10M7 9h10M8 5c4 0 5 1.5 5 4s-1.5 4-5 4l7 6" /></svg>);
+export const DollarIcon = () => (
+  <svg {...p}><path d="M12 3v2M12 19v2M16 8c0-1.7-1.8-3-4-3s-4 1.3-4 3 1.8 2.5 4 3 4 1.3 4 3-1.8 3-4 3-4-1.3-4-3" /></svg>
+);
 export const TriangleIcon = () => (<svg {...p}><path d="M12 4l9 16H3L12 4z" /><path d="M12 10v4M12 17h.01" /></svg>);

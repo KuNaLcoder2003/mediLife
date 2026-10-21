@@ -25,7 +25,7 @@ export default function Sidebar() {
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end} className={active}>
             {n.icon}{n.label}
-            {n.badge && <span className="nav__badge">{n.badge}</span>}
+            {/* {n.badge && <span className="nav__badge">{n.badge}</span>} */}
           </NavLink>
         ))}
       </nav>
