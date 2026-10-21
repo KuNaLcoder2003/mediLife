@@ -65,7 +65,7 @@ export default function DashboardPage() {
           <select className="select">
             <option>Last 30 days</option><option>Last 7 days</option><option>Last 90 days</option>
           </select>
-          <Link to="/admin/products" className="btn-add"><PlusIcon /> Add product</Link>
+          <Link to="/admin/products/new" className="btn-add"><PlusIcon /> Add product</Link>
         </div>
       </header>
 

@@ -7,6 +7,8 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 
 import AdminLayout from "./components/admin/AdminLayout";
 import DashboardPage from "./pages/admin/DashboardPage";
+import ProductsPage from "./pages/admin/ProductsPage";
+import AddProductPage from "./pages/admin/AddProductPage";
 
 export default function App() {
   return (
@@ -22,6 +24,8 @@ export default function App() {
         {/* Admin block routes */}
         <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<DashboardPage />} />
+        <Route path="products" element={<ProductsPage />} />
+        <Route path="products/new" element={<AddProductPage />} />
         <Route path="*" element={<h1 className="soon">Coming soon</h1>} />
 </Route>
       </Routes>
