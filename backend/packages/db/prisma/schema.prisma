@@ -132,6 +132,7 @@ model Order {
 model OrderdProducts {
   orderId String
   productId String
+  quantity Int @default(0)
   order Order @relation(fields: [orderId] , references: [id])
   product Products @relation(fields: [productId] , references: [id])
   createdAt DateTime @default(now())

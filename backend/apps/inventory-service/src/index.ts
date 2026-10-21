@@ -60,6 +60,7 @@ await redisClient.subscribe('INVENTORY_UPDATE', async (message) => {
                             data: {
                                 orderId: subscribedData.payload.orderId,
                                 productId: product.productId,
+                                quantity: product.quantity
                                 // add quantity as well later
                             }
                         })
