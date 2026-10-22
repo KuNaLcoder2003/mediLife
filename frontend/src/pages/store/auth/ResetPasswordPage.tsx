@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import PasswordInput from "../components/store/PasswordInput";
+import PasswordInput from "../../../components/store/auth/PasswordInput";
 import PrimaryButton from "../../../components/store/auth/PrimaryButton";
 import { BackIcon, CheckIcon, CircleIcon } from "../../../components/store/auth/Icons";
 

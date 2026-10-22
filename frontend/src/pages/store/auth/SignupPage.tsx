@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import BrandLogo from "../components/BrandLogo";
-import FormInput from "../components/FormInput";
-import PasswordInput from "../components/store/PasswordInput";
+import BrandLogo from "../../../components/store/auth/BrandLogo";
+import FormInput from "../../../components/store/auth/FormInput";
+import PasswordInput from "../../../components/store/auth/PasswordInput";
 import PrimaryButton from "../../../components/store/auth/PrimaryButton";
 import { GoogleIcon, InfoIcon } from "../../../components/store/auth/Icons";
 import { authApi } from "../../../lib/api";

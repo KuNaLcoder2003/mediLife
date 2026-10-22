@@ -33,7 +33,17 @@ async function get<T>(path: string): Promise<T> {
   return data as T;
 }
 
-export interface Product { id: string; productName: string; quantity: number; price: number; discount: number | null; }
+export interface Product {
+  id: string;
+  productName: string;
+  productDescription?: string;
+  quantity: number;
+  reservedQuantity?: number; // arrives once the backend adds it to the select
+  price: number;
+  discount: number | null;
+  images?: { id: string; imageUrl: string }[];
+  category?: { category: string } | null;
+}
 
 export const productApi = {
   list: async (name?: string) => {
@@ -60,6 +70,7 @@ export interface NewProductInput {
   price: number;
   discount: number;
   quantity: number;
+  reservedQuantity: number;
   categoryId: string;
 }
 export interface Category {
@@ -78,19 +89,28 @@ export const adminProductApi = {
     await post("/product/newCategory", { category });
   },
 
-  uploadImages: async (productId: string, files: File[]) => {
-    const form = new FormData();
-    form.append("productId", productId); 
-    files.forEach((f) => form.append("product_images", f, f.name));
-    let res: Response;
-    try {
-      res = await fetch(`${BASE}/product/newImages`, { method: "POST", body: form, credentials: "include" });
-    } catch {
-      throw new Error("Can't reach the server. Check your connection and try again.");
-    }
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data || data.valid === false) {
-      throw new Error(typeof data?.message === "string" ? data.message : `Upload failed (${res.status})`);
-    }
-  },
+  uploadImages: (productId: string, files: File[], onProgress?: (percent: number) => void) =>
+    new Promise<void>((resolve, reject) => {
+      const form = new FormData();
+      form.append("productId", productId);
+      files.forEach((f) => form.append("product_images", f, f.name));
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${BASE}/product/newImages`);
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onerror = () => reject(new Error("Can't reach the server. Check your connection and try again."));
+      xhr.onload = () => {
+      const readReply = (): { valid?: boolean; message?: string } | null => {
+        try { return JSON.parse(xhr.responseText); } catch { return null; }
+      };
+      const data = readReply();
+      if (xhr.status >= 200 && xhr.status < 300 && data && data.valid !== false) resolve();
+      else reject(new Error(data?.message ?? `Upload failed (${xhr.status})`));
+};
+    xhr.send(form);
+  }),
+
 };
