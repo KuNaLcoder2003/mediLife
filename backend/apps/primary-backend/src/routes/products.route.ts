@@ -1,5 +1,5 @@
 import express from "express"
-import { addNewProductCategory, addProductHandler, getProductCategories, getProducts, uploadImagesHandler } from "../controllers/product.controller.js"
+import { addNewProductCategory, addProductHandler, deleteProduct, editProductDetails, getProductCategories, getProducts, uploadImagesHandler } from "../controllers/product.controller.js"
 import { getProductById } from "../controllers/product.controller.js"
 import multer from "multer"
 const memoryStorage = multer.memoryStorage()
@@ -13,4 +13,6 @@ productsRouter.get('/', getProducts)
 productsRouter.get('/get/:productId', getProductById)
 productsRouter.post('/newImages', upload.array("product_images", 5), uploadImagesHandler)
 productsRouter.get('/categories', getProductCategories)
+productsRouter.patch('/edit/:id', editProductDetails)
+productsRouter.delete('/:id', deleteProduct)
 export default productsRouter

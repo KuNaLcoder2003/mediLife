@@ -3,6 +3,17 @@ import type { keyWords, ProductDetails } from "../types/index.js"
 import { prisma } from "@repo/db"
 import { createMultipleImages, fetchProductById, uploadMultipleAssetsToCloud } from "../helpers/product.js"
 
+
+type EditProduct = {
+    productName?: string
+    productDescription?: string
+    price?: number
+    quantity?: number
+    discount?: number
+    reservedQuantity?: number
+    categoryId?: number
+}
+
 export const addProductHandler = async (req: express.Request, res: express.Response) => {
     try {
         const productDetails = req.body as ProductDetails
@@ -282,6 +293,126 @@ export const getProductCategories = async (req: express.Request, res: express.Re
         console.log(error)
         res.status(500).json({
             message: "Somnething went wrong",
+            valid: false
+        })
+    }
+}
+
+
+export const deleteProduct = async (req: express.Request, res: express.Response) => {
+    try {
+        const productId = req.params.id as string;
+        if (!productId) {
+            res.status(400).json(
+                {
+                    message: "Bad request",
+                    valid: false
+                }
+            )
+            return
+        }
+        await prisma.$transaction(async (tx) => {
+            await tx.productIamges.deleteMany({
+                where: {
+                    productId: productId
+                }
+            })
+            // also delete for the s3 bucket => add these later
+            await tx.products.delete({
+                where: {
+                    id: productId
+                }
+            })
+        })
+        res.status(200).json({
+            message: "Product deleted",
+            valid: true
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            message: "Somnething went wrong",
+            valid: false
+        })
+    }
+}
+
+
+export const editProductDetails = async (req: express.Request, res: express.Response) => {
+    try {
+        const product = req.body.product as EditProduct | undefined
+        const productId = req.params.id as string | undefined
+
+        if (!productId) {
+            res.status(400).json({
+                message: "Bad request , please provide a product id",
+                valid: false
+            })
+            return
+        }
+        if (!product || typeof product !== "object") {
+            res.status(400).json({
+                message: "Nothing to update",
+                valid: false
+            })
+            return
+        }
+
+        // check whether product exists
+        const exists = await prisma.products.findUnique({
+            where: { id: productId }
+        })
+
+        if (!exists) {
+            res.status(404).json({
+                message: "No such product exists",
+                valid: false
+            })
+            return
+        }
+
+        const data: any = {}
+        if (product.productName !== undefined) data.productName = product.productName
+        if (product.productDescription !== undefined) data.productDescription = product.productDescription
+        if (product.price !== undefined) data.price = product.price
+        if (product.quantity !== undefined) data.quantity = product.quantity
+        if (product.discount !== undefined) data.discount = product.discount
+        if (product.reservedQuantity !== undefined) data.reservedQuantity = product.reservedQuantity
+        if (product.categoryId !== undefined) data.categoryId = product.categoryId
+
+        if (Object.keys(data).length === 0) {
+            res.status(400).json({
+                message: "No fields provided to update",
+                valid: false
+            })
+            return
+        }
+
+        // reservedQuantity must not exceed quantity
+        const newQty = product.quantity ?? exists.quantity
+        const newReserved = product.reservedQuantity ?? exists.reservedQuantity
+        if (newReserved > newQty) {
+            res.status(400).json({
+                message: "Reserved quantity cannot exceed quantity",
+                valid: false
+            })
+            return
+        }
+
+        const updated = await prisma.products.update({
+            where: { id: productId },
+            data
+        })
+
+        res.status(200).json({
+            message: "Product updated successfully",
+            valid: true,
+            product: updated
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            message: "Something went wrong",
             valid: false
         })
     }
