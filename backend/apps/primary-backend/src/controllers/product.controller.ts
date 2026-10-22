@@ -52,7 +52,7 @@ export const addProductHandler = async (req: express.Request, res: express.Respo
 
 export const addNewProductCategory = async (req: express.Request, res: express.Response) => {
     try {
-        const category = req.body as string
+        const category = req.body.category as string
         if (!category) {
             res.status(400).json({
                 message: "Please mention the category to add",
