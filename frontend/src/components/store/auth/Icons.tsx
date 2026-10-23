@@ -69,3 +69,5 @@ export const PencilIcon = () => (<svg {...p} width={16} height={16}><path d="M4 
 export const DotsIcon = () => (<svg {...p} width={16} height={16} fill="currentColor" stroke="none"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>);
 export const DownloadIcon = () => (<svg {...p}><path d="M12 4v11M7 11l5 5 5-5M4 20h16" /></svg>);
 export const NextIcon = () => (<svg {...p}><path d="M9 6l6 6-6 6" /></svg>);
+
+  export const PrinterIcon = () => (<svg {...p}><path d="M7 9V4h10v5M7 17H5a1 1 0 01-1-1v-5a2 2 0 012-2h12a2 2 0 012 2v5a1 1 0 01-1 1h-2M7 14h10v6H7z" /></svg>);

@@ -9,6 +9,8 @@ import AdminLayout from "./components/Admin/AdminLayout";
 import DashboardPage from "./pages/admin/DashboardPage";
 import ProductsPage from "./pages/admin/ProductsPage";
 import AddProductPage from "./pages/admin/AddProductPage";
+import OrdersPage from "./pages/admin/OrdersPage";
+import OrderDetailPage from "./pages/admin/OrderDetailPage";
 
 export default function App() {
   return (
@@ -26,6 +28,9 @@ export default function App() {
           <Route index element={<DashboardPage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/new" element={<AddProductPage />} />
+          <Route path="products/:productId/edit" element={<AddProductPage />} />
+          <Route path="orders" element={<OrdersPage />} />
+          <Route path="orders/:orderId" element={<OrderDetailPage />} />
           <Route path="*" element={<h1 className="soon">Coming soon</h1>} />
         </Route>
       </Routes>
