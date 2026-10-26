@@ -45,7 +45,7 @@ export default function OrdersPage() {
     [inRange, tab, pay, word],
   );
 
-  // Pagination (the server sends everything at once)
+  
   const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const current = Math.min(page, pages);
   const view = rows.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);

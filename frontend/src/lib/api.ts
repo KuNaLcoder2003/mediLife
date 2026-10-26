@@ -160,8 +160,8 @@ async function refreshToken(): Promise<string | null> {
       return token;
     }
   } catch {
-    /* ignore */
-  }
+    /*ignore*/
+    };
   return null;
 }
 
@@ -221,9 +221,10 @@ export interface Order {
   orderedProducts: OrderLine[];
   address?: { postalCode: string; addressLine1: string; addressLine2?: string | null };
   payment?: { status: string; stripeID?: string } | null;
+  customer?: { name: string; email: string; mobile?: string | null; createdAt?: string };
 }
 
-export const orderApi = {
+export const OrderApi = {
   list: async (): Promise<Order[]> => {
     try {
       const data = await authRequest<{ orders: Order[] }>("POST", "/order/getOrders");
@@ -243,7 +244,6 @@ export const orderApi = {
     }
   },
 };
-
 export const userApi = {
   me: async () => (await authRequest<{ user: User }>("GET", "/users/me")).user,
 };
