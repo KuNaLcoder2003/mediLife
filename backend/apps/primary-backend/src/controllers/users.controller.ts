@@ -239,7 +239,21 @@ export const updateUserDetails = async (req: any, res: express.Response) => {
 
 export const getAllUsers = async (req: express.Request, res: express.Response) => {
     try {
-        const users = await prisma.users.findMany({})
+        const users = await prisma.users.findMany({
+            select: {
+                id: true,
+                mobile: true,
+                email: true,
+                name: true,
+                addresses: {
+                    select: {
+                        addressLine1: true,
+                        addressLine2: true,
+                        postalCode: true,
+                    }
+                }
+            }
+        })
         if (!users) {
             res.status(404).json({
                 message: "Users not found",

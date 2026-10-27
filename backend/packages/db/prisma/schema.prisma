@@ -54,6 +54,7 @@ model Users {
   createdAt DateTime @default(now())
   updatedat DateTime @updatedAt
   lastLoggedIn DateTime?
+  orders Order[] 
   sessions     Session[]
 }
 
@@ -126,6 +127,7 @@ model Order {
   updatedAt DateTime @updatedAt
   orderedProducts OrderdProducts[]
   address Address @relation(fields: [addressId] , references: [id])
+  user Users @relation(fields: [userId] , references: [id])
   payment Payments?
 }
 

@@ -26,6 +26,7 @@ const getProducts = async (items: { productId: string, quantity: number }[]) => 
             id: true,
             productName: true,
             productDescription: true,
+            discount: true,
             images: {
                 select: {
                     imageUrl: true
@@ -50,7 +51,7 @@ const getProducts = async (items: { productId: string, quantity: number }[]) => 
                     name: item.productName,
                     description: item.productDescription,
                 },
-                unit_amount: item.price * 100,
+                unit_amount: item.price * (1 - (item.discount ?? 0) / 100) * 100,
             },
             quantity: item.quantity,
         }
