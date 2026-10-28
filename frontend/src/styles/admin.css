@@ -374,6 +374,19 @@ button.btn-add:disabled { opacity: .6; cursor: not-allowed; }
 .gchart__label { display: grid; justify-items: center; gap: 2px; padding-top: 8px; font-size: 13px; }
 .gchart__label small { color: var(--muted); }
 
+/*Customers */
+.cust { display: flex; align-items: center; gap: 12px; min-width: 220px; color: var(--ink); }
+.cust .avatar { width: 40px; height: 40px; font-size: 14px; flex-shrink: 0; }
+.cust strong, .cust small { display: block; }
+.cust small { color: var(--muted); font-weight: 400; }
+.muted-cell { color: var(--muted); }
+.who--lg .avatar { width: 64px; height: 64px; font-size: 20px; }
+.who--lg h1 { margin: 0 0 2px; }
+.who--lg .muted { margin: 0; }
+.addr-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 12px; }
+.addr-list li { padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: #fafcfb; }
+.addr-list small { display: block; margin-bottom: 6px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.addr-list .addr { gap: 2px; }
 
 @media print {
   .sidebar, .subbar, .page-head__actions, .topbar { display: none !important; }

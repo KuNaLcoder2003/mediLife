@@ -160,8 +160,8 @@ async function refreshToken(): Promise<string | null> {
       return token;
     }
   } catch {
-    /*ignore*/
-    };
+    /* ignore */
+  }
   return null;
 }
 
@@ -246,4 +246,37 @@ export const OrderApi = {
 };
 export const userApi = {
   me: async () => (await authRequest<{ user: User }>("GET", "/users/me")).user,
+};
+
+/* Admin orders */
+//   const data = await authRequest<{ orders: Order[] }>("GET", "/admin/orders");
+//   return [...(data.orders ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+export const adminOrderApi = {
+  list: async (): Promise<Order[]> => [],
+};
+
+/* Admin customers */
+
+export interface Address {
+  addressLine1: string;
+  addressLine2?: string | null;
+  postalCode: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  mobile?: string | null;
+  addresses: Address[];
+}
+
+// users.route.ts
+const CUSTOMERS_PATH = "/users/allUsers";
+
+export const customerApi = {
+  list: async (): Promise<Customer[]> => {
+    const data = await authRequest<{ users: Customer[] }>("GET", CUSTOMERS_PATH);
+    return (data.users ?? []).map((u) => ({ ...u, addresses: u.addresses ?? [] }));
+  },
 };
