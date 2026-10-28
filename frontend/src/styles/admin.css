@@ -388,6 +388,15 @@ button.btn-add:disabled { opacity: .6; cursor: not-allowed; }
 .addr-list small { display: block; margin-bottom: 6px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
 .addr-list .addr { gap: 2px; }
 
+/* Confirm dialog*/
+.confirm__icon { width: 44px; height: 44px; margin-bottom: 14px; display: grid; place-items: center;
+                 border-radius: 50%; background: var(--error-bg); color: var(--error); }
+.confirm__icon svg { width: 22px; height: 22px; }
+.btn-delete { height: 48px; padding: 0 22px; border: 0; border-radius: 10px; background: var(--error);
+              color: #fff; font-weight: 700; font-size: 15px; cursor: pointer; }
+.btn-delete:disabled { opacity: .6; cursor: not-allowed; }
+.modal__box .field-error { margin: -8px 0 12px; }
+
 @media print {
   .sidebar, .subbar, .page-head__actions, .topbar { display: none !important; }
   .admin { display: block; background: #fff; }

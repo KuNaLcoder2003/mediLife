@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DownloadIcon, InfoIcon } from "../../components/store/auth/Icons";
-import { OrderApi, productApi, type Order, type Product } from "../../lib/api"; //OrderApi
+import {productApi, type Order, type Product } from "../../lib/api"; //OrderApi
 import { money, STATUS_INFO } from "../../lib/orders";
 import {
   byCategory, compact, DAY, downloadCsv, inWindow, monthlySeries, niceStep,

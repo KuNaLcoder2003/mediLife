@@ -12,7 +12,7 @@ import AddProductPage from "./pages/admin/AddProductPage";
 import OrdersPage from "./pages/admin/OrdersPage";
 import OrderDetailPage from "./pages/admin/OrderDetailPage";
 import ReportsPage from "./pages/admin/ReportsPage";
-import CustomersPage from "./pages/admin/Customerspage";
+import CustomersPage from "./pages/admin/CustomersPage";
 import CustomerDetailPage from "./pages/admin/CustomerDetailPage";
 
 export default function App() {
