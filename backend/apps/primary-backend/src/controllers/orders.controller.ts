@@ -214,3 +214,48 @@ export const cancelOrderHandler = async (req: any, res: express.Response) => {
         })
     }
 }
+
+export const getAllOrdersAdmin = async (req: express.Request, res: express.Response) => {
+    try {
+        const orders = await prisma.order.findMany({
+            select: {
+                id: true,
+                orderTotal: true,
+                userId: true,
+                createdAt: true,
+                trackingId: true,
+                address: true,
+                status: true,
+                orderedProducts: {
+                    select: {
+                        product: {
+                            select: {
+                                id: true,
+                                productDescription: true,
+                                productName: true,
+                                images: true,
+                            }
+                        }
+                    }
+                }
+            }
+        })
+        if (!orders) {
+            res.status(404).json({
+                message: "No order found",
+                valid: false
+            })
+            return
+        }
+        res.status(200).json({
+            valid: false,
+            orders
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            message: "Something went wrong",
+            valid: false
+        })
+    }
+}
