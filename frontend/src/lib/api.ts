@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL;
+const BASE = "http://medlife.edgeframe-solutions.com/api/v1";
 
 async function post<T>(path: string, body?: object): Promise<T> {
   let res: Response;
@@ -103,14 +103,14 @@ export const adminProductApi = {
       };
       xhr.onerror = () => reject(new Error("Can't reach the server. Check your connection and try again."));
       xhr.onload = () => {
-      const readReply = (): { valid?: boolean; message?: string } | null => {
-        try { return JSON.parse(xhr.responseText); } catch { return null; }
+        const readReply = (): { valid?: boolean; message?: string } | null => {
+          try { return JSON.parse(xhr.responseText); } catch { return null; }
+        };
+        const data = readReply();
+        if (xhr.status >= 200 && xhr.status < 300 && data && data.valid !== false) resolve();
+        else reject(new Error(data?.message ?? `Upload failed (${xhr.status})`));
       };
-      const data = readReply();
-      if (xhr.status >= 200 && xhr.status < 300 && data && data.valid !== false) resolve();
-      else reject(new Error(data?.message ?? `Upload failed (${xhr.status})`));
-};
-    xhr.send(form);
-  }),
+      xhr.send(form);
+    }),
 
 };
