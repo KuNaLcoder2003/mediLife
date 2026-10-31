@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { BackIcon, DotsIcon, DownloadIcon, ImageIcon, NextIcon, PencilIcon, PlusIcon, SearchIcon } from "../../components/store/auth/Icons";
-import { productApi, type Product } from "../../lib/api";
+import { BackIcon, DownloadIcon, ImageIcon, NextIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from "../../components/store/auth/Icons";
+import { adminProductApi, productApi, type Product } from "../../lib/api";
+import ConfirmDialog from "../../components/Admin/ConfirmDialog";
 
 const LOW_STOCK_LIMIT = 20;
 const PAGE_SIZE = 8;
@@ -28,6 +29,9 @@ export default function ProductsPage() {
   const [sort, setSort] = useState("default");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
+  const [toDelete, setToDelete] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     productApi.list()
@@ -40,7 +44,8 @@ export default function ProductsPage() {
 
   const counts: Record<Tab, number> = {
     all: all.length,
-    in: all.filter((p) => stockOf(p) === "in").length,
+    // in: all.filter((p) => stockOf(p) === "in").length,
+    in: all.filter((p) => available(p) > 0).length,
     low: all.filter((p) => stockOf(p) === "low").length,
     out: all.filter((p) => stockOf(p) === "out").length,
   };
@@ -50,7 +55,8 @@ export default function ProductsPage() {
   const rows = useMemo(() => {
     const list = all.filter(
       (p) =>
-        (tab === "all" || stockOf(p) === tab) &&
+        // (tab === "all" || stockOf(p) === tab) &&
+        (tab === "all" || (tab === "in" ? available(p) > 0 : stockOf(p) === tab)) &&
         (!category || p.category?.category === category) &&
         (!word || p.productName.toLowerCase().includes(word) || p.id.toLowerCase().includes(word)),
     );
@@ -94,6 +100,31 @@ export default function ProductsPage() {
     a.click();
     URL.revokeObjectURL(url);
   };
+  // const onDelete = async (p: Product) => {
+  //   if (!window.confirm(`Delete "${p.productName}"? This can't be undone.`)) return;
+  //   try {
+  //     await adminProductApi.remove(p.id);
+  //     setProducts((list) => (list ? list.filter((x) => x.id !== p.id) : list));
+  //     setSelected((s) => s.filter((id) => id !== p.id));
+  //   } catch (e) {
+  //     alert(e instanceof Error ? e.message : "Couldn't delete the product.");
+  //   }
+  // };
+  const confirmDelete = async () => {
+  if (!toDelete) return;
+  setDeleting(true);
+  setDeleteError("");
+  try {
+    await adminProductApi.remove(toDelete.id);
+    setProducts((list) => (list ?? []).filter((p) => p.id !== toDelete.id));
+    setSelected((s) => s.filter((id) => id !== toDelete.id));
+    setToDelete(null);
+  } catch (e) {
+    setDeleteError(e instanceof Error ? e.message : "Couldn't delete the product.");
+  } finally {
+    setDeleting(false);
+  }
+};
 
   return (
     <>
@@ -208,8 +239,8 @@ export default function ProductsPage() {
                       </td>
                       <td>
                         <div className="row-actions">
-                          <button type="button" className="icon-sq" disabled aria-label="Edit" title="Editing needs an update endpoint on the backend"><PencilIcon /></button>
-                          <button type="button" className="icon-sq" disabled aria-label="More actions" title="Needs update and delete endpoints on the backend"><DotsIcon /></button>
+                          <Link to={`/admin/products/${p.id}/edit`} className="icon-sq" aria-label={`Edit ${p.productName}`} title="Edit product"><PencilIcon /></Link>
+                          <button type="button" className="icon-sq" aria-label={`Delete ${p.productName}`} title="Delete product" onClick={() => { setDeleteError(""); setToDelete(p); }}><TrashIcon /></button>
                         </div>
                       </td>
                     </tr>
@@ -237,6 +268,16 @@ export default function ProductsPage() {
           </div>
         </section>
       </div>
+      {toDelete && (
+        <ConfirmDialog
+        title="Delete this product?"
+        message={`"${toDelete.productName}" will be removed from your store. This can't be undone.`}
+        error={deleteError}
+        busy={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setToDelete(null)}
+        />
+      )}
     </>
   );
 }
