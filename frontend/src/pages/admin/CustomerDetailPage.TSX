@@ -4,6 +4,7 @@ import { adminOrderApi, ApiError, customerApi, type Customer, type Order } from 
 import { initials } from "../../lib/customers";
 import { fmtDate, itemCount, money, plural, shortId, statusInfo } from "../../lib/orders";
 import { countsAsRevenue, revenueOf } from "../../lib/reports";
+import AdminUser from "../../components/Admin/AdminUser";
 
 export default function CustomerDetailPage() {
   const { customerId = "" } = useParams();
@@ -35,7 +36,7 @@ export default function CustomerDetailPage() {
   const bar = (
     <div className="subbar">
       <p className="crumbs"><Link to="/admin/customers">Customers</Link> / <b>{customer ? customer.name : "Customer"}</b></p>
-      <div className="user"><span className="avatar">SA</span><strong>Store Admin</strong></div>
+      <AdminUser />
     </div>
   );
 

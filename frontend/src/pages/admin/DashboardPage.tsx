@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PlusIcon, DollarIcon, ClipboardIcon, ChartIcon, TriangleIcon, BoxIcon } from "../../components/store/auth/Icons";
 import { productApi, type Product } from "../../lib/api";
+import { money } from "../../lib/orders";
 
-const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
 
 
 const LOW_STOCK_LIMIT = 20;
@@ -90,7 +90,7 @@ export default function DashboardPage() {
           ) : (
             <>
               <div className="chart">
-                <div className="chart__y"><span>₹45k</span><span>₹30k</span><span>₹15k</span><span>0</span></div>
+                <div className="chart__y"><span>$45k</span><span>$30k</span><span>$15k</span><span>0</span></div>
                 <div className="chart__bars">
                   {BARS.map((v, i) => (
                     <span key={i} className={i === BARS.length - 1 ? "on" : ""} style={{ height: `${(v / 45) * 100}%` }} />
@@ -130,7 +130,7 @@ export default function DashboardPage() {
                   <td>{o.customer}</td>
                   <td>{o.placed}</td>
                   <td><span className={`pill tone-${TONE[o.status]}`}>{o.status}</span></td>
-                  <td className="r">{inr(o.total)}</td>
+                  <td className="r">{money(o.total)}</td>
                 </tr>
               ))}
             </tbody>

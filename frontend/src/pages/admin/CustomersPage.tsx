@@ -5,6 +5,7 @@ import { adminOrderApi, ApiError, customerApi, type Customer, type Order } from 
 import { initials, statsByCustomer } from "../../lib/customers";
 import { fmtDate, money, plural } from "../../lib/orders";
 import { downloadCsv } from "../../lib/reports";
+import AdminUser from "../../components/Admin/AdminUser";
 
 const PAGE_SIZE = 10;
 
@@ -89,7 +90,7 @@ export default function CustomersPage() {
     <>
       <div className="subbar">
         <p className="crumbs"><Link to="/admin">Dashboard</Link> / <b>Customers</b></p>
-        <div className="user"><span className="avatar">SA</span><strong>Store Admin</strong></div>
+        <AdminUser />
       </div>
 
       <div className="page-pad">

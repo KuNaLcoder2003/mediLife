@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { BackIcon, DownloadIcon, InfoIcon, NextIcon, SearchIcon } from "../../components/store/auth/Icons";
 import type { Order } from "../../lib/api";
 import { fmtDate, itemCount, money, PAY_INFO, plural, shortId, statusInfo, TABS, type Tab } from "../../lib/orders";
+import AdminUser from "../../components/Admin/AdminUser";
 
 const PAGE_SIZE = 9;
 const RANGES: [string, string][] = [["7", "Last 7 days"], ["30", "Last 30 days"], ["90", "Last 90 days"], ["all", "All time"]];
@@ -85,7 +86,7 @@ export default function OrdersPage() {
     <>
       <div className="subbar">
         <p className="crumbs"><Link to="/admin">Dashboard</Link> / <b>Orders</b></p>
-        <div className="user"><span className="avatar">SA</span><strong>Store Admin</strong></div>
+        <AdminUser />
       </div>
 
       <div className="page-pad">

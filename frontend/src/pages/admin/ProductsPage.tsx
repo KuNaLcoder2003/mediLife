@@ -1,8 +1,10 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { BackIcon, DownloadIcon, ImageIcon, NextIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from "../../components/store/auth/Icons";
 import { adminProductApi, productApi, type Product } from "../../lib/api";
 import ConfirmDialog from "../../components/Admin/ConfirmDialog";
+import ProductDrawer from "../../components/Admin/ProductDrawer";
+import AdminUser from "../../components/Admin/AdminUser";
 
 const LOW_STOCK_LIMIT = 20;
 const PAGE_SIZE = 8;
@@ -32,6 +34,8 @@ export default function ProductsPage() {
   const [toDelete, setToDelete] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [viewing, setViewing] = useState<string | null>(null);
+  const closeDrawer = useCallback(() => setViewing(null), []);
 
   useEffect(() => {
     productApi.list()
@@ -130,7 +134,7 @@ export default function ProductsPage() {
     <>
       <div className="subbar">
         <p className="crumbs"><Link to="/admin">Dashboard</Link> / <b>Products</b></p>
-        <div className="user"><span className="avatar">SA</span><strong>Store Admin</strong></div>
+        <AdminUser />
       </div>
 
       <div className="page-pad">
@@ -219,7 +223,7 @@ export default function ProductsPage() {
                             {img && <img src={img} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
                           </span>
                           <div>
-                            <strong>{p.productName}</strong>
+                            <button type="button" className="link-name" onClick={() => setViewing(p.id)} title="View details">{p.productName}</button>
                             <small>#{p.id.slice(0, 8)} · {n ? plural(n, "image") : "No images"}</small>
                           </div>
                         </div>
@@ -268,6 +272,7 @@ export default function ProductsPage() {
           </div>
         </section>
       </div>
+      {viewing && <ProductDrawer productId={viewing} onClose={closeDrawer} />}
       {toDelete && (
         <ConfirmDialog
         title="Delete this product?"

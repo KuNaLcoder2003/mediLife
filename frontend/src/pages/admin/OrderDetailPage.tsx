@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { AlertIcon, CheckIcon, ImageIcon, InfoIcon, PrinterIcon } from "../../components/store/auth/Icons";
 import type { Order } from "../../lib/api";
 import { fmtDate, fmtLong, money, PAY_INFO, shortId, STATUS_INFO, statusInfo } from "../../lib/orders";
+import AdminUser from "../../components/Admin/AdminUser";
 
 const STEPS = ["Pending", "Confirmed", "Shipped", "Delivered"];
 const STEP_OF: Record<string, number> = { CREATED: 0, CONFIRMED: 1, PACKING: 1, SHIPPED: 2, DISPATCHED: 2, DELIVERED: 3 };
@@ -10,12 +11,15 @@ const BACKEND_READY = false;
 export default function OrderDetailPage() {
   const { orderId = "" } = useParams();
 
-  const order: Order = { id: orderId, userId: "", trackingId: "", orderTotal: 0, createdAt: "", orderedProducts: [] };
+  const order: Order = {
+    id: orderId, userId: "", trackingId: "", orderTotal: 0, createdAt: "", orderedProducts: [],
+    address: { id: "", userId: "", postalCode: "", addressLine1: "" },
+  };
 
   const bar = (
     <div className="subbar">
       <p className="crumbs"><Link to="/admin/orders">Orders</Link> / <b>#{shortId(orderId)}</b></p>
-      <div className="user"><span className="avatar">SA</span><strong>Store Admin</strong></div>
+      <AdminUser />
     </div>
   );
 

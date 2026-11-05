@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BellIcon, SearchIcon } from "../store/auth/Icons";
 import { productApi, type Product } from "../../lib/api";
+import AdminUser from "./AdminUser";
 export default function Topbar() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -55,10 +56,7 @@ export default function Topbar() {
 
       <div className="topbar__right">
         <button className="icon-btn" aria-label="Notifications"><BellIcon /><i /></button>
-        <div className="user">
-          <span className="avatar">SA</span>
-          <div><strong>Store Admin</strong><small>Super admin</small></div>
-        </div>
+        <AdminUser detailed />
       </div>
     </header>
   );

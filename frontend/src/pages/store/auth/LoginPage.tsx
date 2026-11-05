@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "../../../auth/auth-context";
 import BrandLogo from "../../../components/store/auth/BrandLogo";
 import FormInput from "../../../components/store/auth/FormInput";
 import PasswordInput from "../../../components/store/auth/PasswordInput";
 import PrimaryButton from "../../../components/store/auth/PrimaryButton";
 import { ShieldIcon, DocIcon, LockIcon, RefreshIcon, GoogleIcon } from "../../../components/store/auth/Icons";
-import { authApi } from "../../../lib/api";
+import { startGoogleSignIn } from "../../../auth/google";
+import { errorMessage } from "../../../lib/format";
 
 const features = [
   { icon: <ShieldIcon />, title: "Genuine products only", text: "Sourced from verified manufacturers and authorised distributors." },
@@ -14,11 +16,19 @@ const features = [
 ];
 
 export default function LoginPage() {
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [params] = useSearchParams();
+  const from = (location.state as { from?: string } | null)?.from ?? "/";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    params.get("error") === "google_failed" ? "Google sign-in didn't finish. Try again or use your email." : "",
+  );
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,21 +37,22 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const token = await authApi.signIn(email.trim().toLowerCase(), password);
-      localStorage.setItem("accessToken", token);
-      setSuccess("Signed in successfully!");
+      await signIn(email.trim().toLowerCase(), password);
+      navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign in failed.");
-    } finally {
+      setError(errorMessage(err, "Sign in failed."));
       setLoading(false);
     }
   };
 
   const onGoogle = async () => {
+    setGoogleLoading(true);
+    setError("");
     try {
-      window.location.assign(await authApi.googleUrl());
+      startGoogleSignIn(from);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Google sign-in isn't available right now.");
+      setError(errorMessage(err, "Google sign-in isn't available right now."));
+      setGoogleLoading(false);
     }
   };
 
@@ -73,7 +84,7 @@ export default function LoginPage() {
       </aside>
 
       <main className="login__form">
-        <p className="login__top">New to MediCart? <Link to="/signup">Create an account</Link></p>
+        <p className="login__top">New to MedLife? <Link to="/signup" state={location.state}>Create an account</Link></p>
 
         <form onSubmit={onSubmit} noValidate>
           <h2>Welcome back</h2>
@@ -85,7 +96,7 @@ export default function LoginPage() {
           <div className="password-row">
             <PasswordInput id="password" label="Password" value={password}
               onChange={(e) => setPassword(e.target.value)} />
-            <Link className="forgot" to="/Forgot-password">Forgot password?</Link>
+            <Link className="forgot" to="/forgot-password">Forgot password?</Link>
           </div>
 
           <label className="check">
@@ -93,17 +104,18 @@ export default function LoginPage() {
           </label>
 
           {error && <p className="field-error">{error}</p>}
-          {success && <p className="field-success">{success}</p>}
 
           <PrimaryButton type="submit" loading={loading}>Sign in</PrimaryButton>
 
           <div className="divider"><span>or</span></div>
 
-          <button type="button" className="btn-outline" onClick={onGoogle}><GoogleIcon /> Continue with Google</button>
+          <button type="button" className="btn-outline" onClick={onGoogle} disabled={googleLoading}>
+            <GoogleIcon /> {googleLoading ? "Redirecting…" : "Continue with Google"}
+          </button>
 
           <p className="guest">
             <span>Just need a quick order?</span>
-            <Link to="/">Continue as guest →</Link>
+            <Link to="/products">Continue as guest →</Link>
           </p>
         </form>
 
