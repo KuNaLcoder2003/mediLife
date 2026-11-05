@@ -242,13 +242,21 @@ export const orderApi = {
 };
 
 /**
- * Admin: all orders. There is no admin orders endpoint on the server yet, so this
- * returns an empty list. When it exists, replace the body with e.g.:
- *   const data = await request<{ orders: Order[] }>("/admin/orders", { auth: true });
- *   return [...(data.orders ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+ * Admin: all orders (order.route.ts → GET /order/admin/allOrders).
+ * Orders only carry a userId, so the customers list fills in each customer's name and contact.
  */
 export const adminOrderApi = {
   async list(): Promise<Order[]> {
-    return [];
+    const [data, customers] = await Promise.all([
+      request<{ orders: Order[] }>("/order/admin/allOrders", { auth: true }),
+      customerApi.list().catch(() => [] as Customer[]),
+    ]);
+    const byId = new Map(customers.map((c) => [c.id, c]));
+    return [...(data.orders ?? [])]
+      .map((o) => {
+        const c = byId.get(o.userId);
+        return { ...o, customer: c ? { name: c.name, email: c.email, mobile: c.mobile } : undefined };
+      })
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
 };
