@@ -4,6 +4,7 @@ import FormInput from "../../../components/store/auth/FormInput";
 import PrimaryButton from "../../../components/store/auth/PrimaryButton";
 import { BackIcon, MailIcon } from "../../../components/store/auth/Icons";
 import { authApi } from "../../../lib/api";
+import { errorMessage } from "../../../lib/format";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -20,7 +21,7 @@ export default function ForgotPasswordPage() {
       await authApi.forgotPassword(email.trim().toLowerCase());
       setSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }

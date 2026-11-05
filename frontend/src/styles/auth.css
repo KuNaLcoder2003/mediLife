@@ -146,4 +146,4 @@ a { color: var(--brand); font-weight: 600; text-decoration: none; }
   .signup__bar { padding: 14px 20px; }
   .signup__card { margin: 0; border-radius: 0; padding: 24px 20px; box-shadow: none; }
   .row { grid-template-columns: 1fr; gap: 0; }
-}
+}.about .field-error { color: var(--error); font-size: 13px; margin: 6px 0 0; }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DownloadIcon, InfoIcon } from "../../components/store/auth/Icons";
-import {productApi, type Order, type Product } from "../../lib/api"; //OrderApi
+import { adminOrderApi, productApi, type Order, type Product } from "../../lib/api";
 import { money, STATUS_INFO } from "../../lib/orders";
 import {
   byCategory, compact, DAY, downloadCsv, inWindow, monthlySeries, niceStep,
@@ -18,7 +18,7 @@ const shortDate = (t: number) => new Date(t).toLocaleDateString("en-GB", { day: 
 const longDate = (t: number) => new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 export default function ReportsPage() {
-  const [orders] = useState<Order[] | null>(null);
+  const [orders, setOrders] = useState<Order[] | null>(null);
   const [products, setProducts] = useState<Product[] | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<TabKey>("sales");
@@ -26,12 +26,16 @@ export default function ReportsPage() {
   const [now] = useState(() => Date.now());
 
   useEffect(() => {
-  productApi.list()
-    .then(setProducts)
-    .catch((e) =>
-      setError(e instanceof Error ? e.message : "Couldn't load products.")
-    );
-}, []);
+    productApi
+      .list()
+      .then(setProducts)
+      .catch((e) => setError(e instanceof Error ? e.message : "Couldn't load products."));
+    // Empty until the server has an admin orders endpoint (see adminOrderApi in lib/api.ts)
+    adminOrderApi
+      .list()
+      .then(setOrders)
+      .catch((e) => setError(e instanceof Error ? e.message : "Couldn't load orders."));
+  }, []);
 
   const allOrders = useMemo(() => orders ?? [], [orders]);
   const allProducts = useMemo(() => products ?? [], [products]);

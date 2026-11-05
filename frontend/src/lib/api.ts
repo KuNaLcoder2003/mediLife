@@ -1,284 +1,254 @@
-const BASE = "http://medlife.edgeframe-solutions.com/api/v1";
+/**
+ * Every call the app makes to the MedLife API lives here.
+ * Requests go through `request()` in ./http, which attaches the access token,
+ * refreshes it once on 401/403 and turns `valid: false` replies into errors.
+ */
+import { API_BASE_URL } from "./config";
+import { ApiError, refreshAccessToken, request, tokenStore } from "./http";
+import type {
+  Category,
+  Customer,
+  EditProductInput,
+  NewAddressInput,
+  NewOrderPayload,
+  NewProductInput,
+  Order,
+  Product,
+  ProfileUpdate,
+  SignUpDetails,
+  User,
+} from "./types";
 
-async function post<T>(path: string, body?: object): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${BASE}${path}`, {
+export { ApiError } from "./http";
+export type * from "./types";
+
+/* ---------------- Auth ---------------- */
+
+export const authApi = {
+  async signIn(email: string, password: string): Promise<string> {
+    const data = await request<{ accessToken: string }>("/auth/signin", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: body ? JSON.stringify(body) : undefined,
-      credentials: "include",
+      // Spelling matches what the backend currently expects.
+      body: { email, password, mode: "CREDENTAILS" },
     });
-  } catch {
-    throw new Error("Can't reach the server. Check your connection and try again.");
-  }
-  const data = await res.json().catch(() => null);
-  if (!res.ok || !data || data.valid === false) {
-    throw new Error(typeof data?.message === "string" ? data.message : `Request failed (${res.status})`);
-  }
-  return data as T;
-}
+    return data.accessToken;
+  },
 
-async function get<T>(path: string): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${BASE}${path}`, { credentials: "include" });
-  } catch {
-    throw new Error("Can't reach the server. Check your connection and try again.");
-  }
-  const data = await res.json().catch(() => null);
-  if (!res.ok || !data || data.valid === false) {
-    throw new Error(typeof data?.message === "string" ? data.message : `Request failed (${res.status})`);
-  }
-  return data as T;
-}
+  async signUp(userDetails: SignUpDetails): Promise<string> {
+    const data = await request<{ accessToken: string }>("/auth/signup", {
+      method: "POST",
+      body: { userDetails },
+    });
+    return data.accessToken;
+  },
 
-/*Products */
+  // Google sign-in is started by navigating to GET /auth/google/start (see auth/google.ts).
 
-export interface Product {
-  id: string;
-  productName: string;
-  productDescription?: string;
-  quantity: number;
-  reservedQuantity?: number;
-  price: number;
-  discount: number | null;
-  images?: { id: string; imageUrl: string }[];
-  category?: { category: string } | null;
-  categoryId?: string;
-}
+  async forgotPassword(email: string): Promise<{ message?: string }> {
+    return request<{ message?: string }>("/auth/forgot-password", { method: "POST", body: { email } });
+  },
 
-export const productApi = {
-  list: async (name?: string) => {
-    const q = name?.trim();
-    const path = q ? `/product/?name=${encodeURIComponent(q)}` : "/product/";
-    return (await get<{ products: Product[] }>(path)).products ?? [];
+  /** Needs `authRouter.post('/logout', logout)` on the server. */
+  async logout(): Promise<void> {
+    await request("/auth/logout", { method: "POST" });
   },
 };
 
-/*Auth */
+/* ---------------- Products (public) ---------------- */
 
-export const authApi = {
-  signIn: async (email: string, password: string) =>
-    (await post<{ accessToken: string }>("/auth/signin", { email, password })).accessToken,
+export const productApi = {
+  async list(name?: string, signal?: AbortSignal): Promise<Product[]> {
+    const q = name?.trim();
+    const data = await request<{ products: Product[] }>(
+      q ? `/product/?name=${encodeURIComponent(q)}` : "/product/",
+      { signal },
+    );
+    return data.products ?? [];
+  },
 
-  signUp: async (userDetails: object) =>
-    (await post<{ accessToken: string }>("/auth/signup", { userDetails })).accessToken,
+  async getById(productId: string): Promise<Product> {
+    const data = await request<{ product: Product }>(`/product/get/${encodeURIComponent(productId)}`);
+    return data.product;
+  },
 
-  googleUrl: async () => (await post<{ url: string }>("/auth/google")).url,
-  forgotPassword: (email: string) => post<{ message?: string }>("/auth/forgot-password", { email }),
+  async categories(): Promise<Category[]> {
+    const data = await request<{ categories: Category[] }>("/product/categories");
+    return data.categories ?? [];
+  },
 };
 
-/*Admin- create products */
+/* ---------------- Products (admin) ---------------- */
 
-export interface NewProductInput {
-  productName: string;
-  productDescription: string;
-  price: number;
-  discount: number;
-  quantity: number;
-  reservedQuantity: number;
-  categoryId: string;
-}
+/** Must match `upload.array("product_images", 5)` on the server. */
+export const IMAGE_FIELD_NAME = "product_images";
+export const MAX_IMAGES_PER_UPLOAD = 5;
 
-export interface EditProductInput {
-  productName?: string;
-  productDescription?: string;
-  price?: number;
-  quantity?: number;
-  discount?: number;
-  reservedQuantity?: number;
-  categoryId?: string;
-}
+function uploadOnce(
+  productId: string,
+  files: File[],
+  token: string | null,
+  onProgress?: (percent: number) => void,
+): Promise<{ status: number; data: { valid?: boolean; message?: string } | null }> {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    // Text fields first so multer has them before it streams the files.
+    form.append("productId", productId);
+    files.forEach((f) => form.append(IMAGE_FIELD_NAME, f, f.name));
 
-export interface Category {
-  id: string;
-  category: string;
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE_URL}/product/newImages`);
+    xhr.withCredentials = true;
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onerror = () => reject(new ApiError("Can't reach the server. Check your connection and try again.", 0));
+    xhr.onload = () => {
+      let data: { valid?: boolean; message?: string } | null;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        data = null;
+      }
+      resolve({ status: xhr.status, data });
+    };
+    xhr.send(form);
+  });
 }
 
 export const adminProductApi = {
-  create: async (input: NewProductInput) =>
-    (await post<{ product: { id: string } }>("/product/newProduct", input)).product,
-
-  categories: async () =>
-    (await get<{ categories: Category[] }>("/product/categories")).categories ?? [],
-
-  createCategory: async (category: string) => {
-    await post("/product/newCategory", { category });
-  },
-
-  update: async (productId: string, product: EditProductInput) => {
-    await authRequest("PATCH", `/product/edit/${encodeURIComponent(productId)}`, { product });
-  },
-
-  remove: async (productId: string) => {
-    await authRequest("DELETE", `/product/${encodeURIComponent(productId)}`);
-  },
-
-  uploadImages: (productId: string, files: File[], onProgress?: (percent: number) => void) =>
-    new Promise<void>((resolve, reject) => {
-      const form = new FormData();
-      form.append("productId", productId); // text field first
-      files.forEach((f) => form.append("product_images", f, f.name));
-
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${BASE}/product/newImages`);
-      xhr.withCredentials = true;
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
-      };
-      xhr.onerror = () => reject(new Error("Can't reach the server. Check your connection and try again."));
-      xhr.onload = () => {
-        const readReply = (): { valid?: boolean; message?: string } | null => {
-          try { return JSON.parse(xhr.responseText); } catch { return null; }
-        };
-        const data = readReply();
-        if (xhr.status >= 200 && xhr.status < 300 && data && data.valid !== false) resolve();
-        else reject(new Error(data?.message ?? `Upload failed (${xhr.status})`));
-      };
-      xhr.send(form);
-    }),
-
-};
-
-
-/*Requests that need the login token*/
-
-export class ApiError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
-}
-
-async function refreshToken(): Promise<string | null> {
-  try {
-    const res = await fetch(`${BASE}/auth/refresh`, { method: "POST", credentials: "include" });
-    const body = await res.json().catch(() => null);
-    const token = body?.access_token ?? body?.accessToken ?? null;
-    if (res.ok && token) {
-      localStorage.setItem("accessToken", token);
-      return token;
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
-async function authRequest<T>(method: "GET" | "POST" | "PATCH" | "DELETE", path: string, body?: object): Promise<T> {
-  const send = (token: string | null) =>
-    fetch(`${BASE}${path}`, {
-      method,
-      credentials: "include",
-      headers: {
-        ...(body ? { "Content-Type": "application/json" } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
+  async create(input: NewProductInput): Promise<{ id: string }> {
+    const data = await request<{ product: { id: string } }>("/product/newProduct", {
+      method: "POST",
+      body: input,
+      auth: true,
     });
+    return data.product;
+  },
 
-  let res: Response;
-  try {
-    res = await send(localStorage.getItem("accessToken"));
+  categories: () => productApi.categories(),
+
+  /** The endpoint doesn't return the new row: reload categories afterwards. */
+  async createCategory(category: string): Promise<void> {
+    await request("/product/newCategory", { method: "POST", body: { category }, auth: true });
+  },
+
+  async update(productId: string, product: EditProductInput): Promise<void> {
+    await request(`/product/edit/${encodeURIComponent(productId)}`, {
+      method: "PATCH",
+      body: { product },
+      auth: true,
+    });
+  },
+
+  async remove(productId: string): Promise<void> {
+    await request(`/product/${encodeURIComponent(productId)}`, { method: "DELETE", auth: true });
+  },
+
+  /** Multipart upload with progress (XHR, since fetch has no upload progress). */
+  async uploadImages(productId: string, files: File[], onProgress?: (percent: number) => void): Promise<void> {
+    let res = await uploadOnce(productId, files, tokenStore.get(), onProgress);
     if (res.status === 401 || res.status === 403) {
-      const fresh = await refreshToken();
-      if (fresh) res = await send(fresh);
+      const fresh = await refreshAccessToken();
+      if (fresh) res = await uploadOnce(productId, files, fresh, onProgress);
     }
-  } catch {
-    throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
-  }
-  const data = await res.json().catch(() => null);
-  if (!res.ok || !data || data.valid === false) {
-    throw new ApiError(typeof data?.message === "string" ? data.message : `Request failed (${res.status})`, res.status);
-  }
-  return data as T;
-}
-
-/* User and orders */
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  mobile?: string | null;
-  createdAt?: string;
-}
-
-export interface OrderLine {
-  product: { id: string; productName: string; images?: { imageUrl: string }[] };
-  quantity?: number;
-  unitPrice?: number;
-}
-
-export interface Order {
-  id: string;
-  userId: string;
-  trackingId: string;
-  orderTotal: number;
-  createdAt: string;
-  updatedAt?: string;
-  status?: string;
-  orderedProducts: OrderLine[];
-  address?: { postalCode: string; addressLine1: string; addressLine2?: string | null };
-  payment?: { status: string; stripeID?: string } | null;
-  customer?: { name: string; email: string; mobile?: string | null; createdAt?: string };
-}
-
-export const OrderApi = {
-  list: async (): Promise<Order[]> => {
-    try {
-      const data = await authRequest<{ orders: Order[] }>("POST", "/order/getOrders");
-      return [...(data.orders ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 404) return []; // the server says 404 when there are none
-      throw e;
-    }
-  },
-
-  get: async (id: string): Promise<Order | null> => {
-    try {
-      return (await authRequest<{ order: Order }>("POST", `/order/get/${encodeURIComponent(id)}`)).order;
-    } catch (e) {
-      if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return null;
-      throw e;
+    if (res.status < 200 || res.status >= 300 || !res.data || res.data.valid === false) {
+      throw new ApiError(res.data?.message ?? `Upload failed (${res.status})`, res.status, res.data);
     }
   },
 };
+
+/* ---------------- Users ---------------- */
+
 export const userApi = {
-  me: async () => (await authRequest<{ user: User }>("GET", "/users/me")).user,
+  async me(): Promise<User> {
+    const data = await request<{ user: User }>("/users/me", { auth: true });
+    return { ...data.user, addresses: data.user.addresses ?? [] };
+  },
+
+  /** Needs `usersRouter.patch('/me', authMiddleware, updateUserDetails)` on the server. */
+  async updateProfile(update: ProfileUpdate): Promise<void> {
+    await request("/users/me", { method: "PATCH", body: update, auth: true });
+  },
+
+  /** POST /users/address */
+  async addAddress(input: NewAddressInput): Promise<void> {
+    await request("/users/address", { method: "POST", body: input, auth: true });
+  },
 };
 
-/* Admin orders */
-//   const data = await authRequest<{ orders: Order[] }>("GET", "/admin/orders");
-//   return [...(data.orders ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-export const adminOrderApi = {
-  list: async (): Promise<Order[]> => [],
-};
-
-/* Admin customers */
-
-export interface Address {
-  addressLine1: string;
-  addressLine2?: string | null;
-  postalCode: string;
-}
-
-export interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  mobile?: string | null;
-  addresses: Address[];
-}
-
-// users.route.ts
-const CUSTOMERS_PATH = "/users/allUsers";
-
+/** Admin: every registered user (users.route.ts → GET /users/allUsers). */
 export const customerApi = {
-  list: async (): Promise<Customer[]> => {
-    const data = await authRequest<{ users: Customer[] }>("GET", CUSTOMERS_PATH);
+  async list(): Promise<Customer[]> {
+    const data = await request<{ users: Customer[] }>("/users/allUsers", { auth: true });
     return (data.users ?? []).map((u) => ({ ...u, addresses: u.addresses ?? [] }));
+  },
+};
+
+/* ---------------- Orders ---------------- */
+
+export interface CreatedOrder {
+  message: string;
+  /** Returned if newOrder sends `orderId`; used to match the payment link to this order. */
+  orderId?: string;
+}
+
+export const orderApi = {
+  /** userId is ignored once the server reads it from the token (authMiddleware). */
+  async create(userId: string, orderDetails: NewOrderPayload): Promise<CreatedOrder> {
+    const data = await request<{ message?: string; orderId?: string }>("/order/newOrder", {
+      method: "POST",
+      body: { userId, orderDetails },
+      auth: true,
+    });
+    return { message: data.message ?? "Order placed", orderId: data.orderId };
+  },
+
+  /** POST /order/cancel. Sends only the order ID: the server looks up the products itself. */
+  async cancel(orderId: string): Promise<string> {
+    const data = await request<{ message?: string }>("/order/cancel", {
+      method: "POST",
+      body: { orderId },
+      auth: true,
+    });
+    return data.message ?? "Order cancelled";
+  },
+
+  /** POST /order/getOrders. The server answers 404 when there are none, so that becomes []. */
+  async list(): Promise<Order[]> {
+    try {
+      const data = await request<{ orders: Order[] }>("/order/getOrders", { method: "POST", auth: true });
+      return [...(data.orders ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return [];
+      throw err;
+    }
+  },
+
+  /** POST /order/get/:orderId. Resolves to null when the order doesn't exist or isn't yours. */
+  async get(orderId: string): Promise<Order | null> {
+    try {
+      const data = await request<{ order: Order }>(`/order/get/${encodeURIComponent(orderId)}`, {
+        method: "POST",
+        auth: true,
+      });
+      return data.order;
+    } catch (err) {
+      // 403 = someone else's order: treat it like "not found" too
+      if (err instanceof ApiError && [400, 403, 404].includes(err.status)) return null;
+      throw err;
+    }
+  },
+};
+
+/**
+ * Admin: all orders. There is no admin orders endpoint on the server yet, so this
+ * returns an empty list. When it exists, replace the body with e.g.:
+ *   const data = await request<{ orders: Order[] }>("/admin/orders", { auth: true });
+ *   return [...(data.orders ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+ */
+export const adminOrderApi = {
+  async list(): Promise<Order[]> {
+    return [];
   },
 };

@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../../auth/auth-context";
+import { startGoogleSignIn } from "../../../auth/google";
 import BrandLogo from "../../../components/store/auth/BrandLogo";
 import FormInput from "../../../components/store/auth/FormInput";
 import PasswordInput from "../../../components/store/auth/PasswordInput";
 import PrimaryButton from "../../../components/store/auth/PrimaryButton";
-import { GoogleIcon, InfoIcon } from "../../../components/store/auth/Icons";
-import { authApi } from "../../../lib/api";
+import { AlertIcon, GoogleIcon, InfoIcon } from "../../../components/store/auth/Icons";
+import { errorMessage } from "../../../lib/format";
+import type { Gender } from "../../../lib/types";
 
 const COUNTRIES: Record<string, string> = {
   India: "+91", "United States": "+1", "United Kingdom": "+44", UAE: "+971",
@@ -16,6 +19,11 @@ const score = (p: string) =>
   [p.length >= 8, /\d/.test(p), /[^\w\s]/.test(p), /[a-z]/.test(p) && /[A-Z]/.test(p)].filter(Boolean).length;
 
 export default function SignupPage() {
+  const { signUp } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from ?? "/";
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [form, setForm] = useState({
     name: "", email: "", password: "", country: "India", mobile: "", age: "", gender: "",
   });
@@ -35,38 +43,42 @@ export default function SignupPage() {
     if (!form.name.trim()) found.name = "Enter your full name.";
     if (!/^\S+@\S+\.\S+$/.test(form.email)) found.email = "Enter a valid email address.";
     if (form.password.length < 8) found.password = "Use at least 8 characters.";
+    if (!form.gender) found.gender = "Select an option.";
+    if (form.age && (!Number.isInteger(Number(form.age)) || Number(form.age) < 1 || Number(form.age) > 120))
+      found.age = "Enter an age between 1 and 120.";
+    if (form.mobile && !/^\+?[\d\s-]{7,15}$/.test(form.mobile.trim())) found.mobile = "Enter a valid phone number.";
     setErrors(found);
     if (Object.keys(found).length) return;
 
     setLoading(true);
     setFormError("");
     try {
-      const token = await authApi.signUp({
+      await signUp({
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
         country: form.country,
-        gender: form.gender || undefined,
-        age: form.age ? Number(form.age) : undefined,
-        mobile: form.mobile ? form.mobile.trim() : undefined,
+        gender: form.gender as Gender,
+        ...(form.age ? { age: Number(form.age) } : {}),
+        ...(form.mobile ? { mobile: form.mobile.trim() } : {}),
         role: "USER",
         authMode: "CREDENTIALS",
       });
-      localStorage.setItem("accessToken", token);
-      alert("Account created!"); // temporary
+      navigate(from, { replace: true });
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Your account couldn't be created.");
-    } finally {
+      setFormError(errorMessage(err, "Your account couldn't be created."));
       setLoading(false);
     }
-
-    setLoading(false);
   };
+
   const onGoogle = async () => {
+    setGoogleLoading(true);
+    setFormError("");
     try {
-      window.location.assign(await authApi.googleUrl());
+      startGoogleSignIn(from);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Google sign-in isn't available right now.");
+      setFormError(errorMessage(err, "Google sign-in isn't available right now."));
+      setGoogleLoading(false);
     }
   };
 
@@ -74,7 +86,7 @@ export default function SignupPage() {
     <div className="signup">
       <header className="signup__bar">
         <BrandLogo />
-        <p>Already have an account? <Link to="/login">Sign in</Link></p>
+        <p>Already have an account? <Link to="/login" state={location.state}>Sign in</Link></p>
       </header>
 
       <form className="signup__card" onSubmit={onSubmit} noValidate>
@@ -104,7 +116,7 @@ export default function SignupPage() {
 
         <div className="row">
           <div className="field">
-            <label htmlFor="country">Country <span className="optional">(optional)</span></label>
+            <label htmlFor="country">Country</label>
             <select id="country" className="input" value={form.country} onChange={set("country")}>
               {Object.keys(COUNTRIES).map((c) => <option key={c}>{c}</option>)}
             </select>
@@ -116,23 +128,25 @@ export default function SignupPage() {
               <input id="mobile" type="tel" placeholder="98765 43210"
                 value={form.mobile} onChange={set("mobile")} />
             </div>
+            {errors.mobile && <p className="field-error"><AlertIcon /> {errors.mobile}</p>}
           </div>
         </div>
         <p className="field-hint hint-gap">Mobile is only used for delivery updates. Code follows the selected country.</p>
 
         <fieldset className="about">
-          <legend>About you <span className="optional">(optional)</span></legend>
+          <legend>About you</legend>
           <p>Helps us suggest suitable products, like age-appropriate dosages and sizes. Never shown to anyone else.</p>
           <div className="row">
-            <FormInput id="age" label="Age" type="number" placeholder="e.g. 34"
-              value={form.age} onChange={set("age")} />
+            <FormInput id="age" label="Age" optional type="number" placeholder="e.g. 34"
+              value={form.age} onChange={set("age")} error={errors.age} />
             <div className="field">
               <label htmlFor="gender">Gender</label>
-              <select id="gender" className="input" value={form.gender} onChange={set("gender")}>
+              <select id="gender" className={errors.gender ? "input input--error" : "input"} value={form.gender} onChange={set("gender")}>
                 <option value="">Select</option>
                 <option value="FEMALE">Female</option>
                 <option value="MALE">Male</option>
               </select>
+              {errors.gender && <p className="field-error"><AlertIcon /> {errors.gender}</p>}
             </div>
           </div>
         </fieldset>
@@ -149,7 +163,9 @@ export default function SignupPage() {
         <PrimaryButton type="submit" loading={loading} disabled={!agreed}>Create account</PrimaryButton>
 
         <div className="divider"><span>or</span></div>
-        <button type="button" className="btn-outline" onClick={onGoogle}><GoogleIcon /> Sign up with Google</button>
+        <button type="button" className="btn-outline" onClick={onGoogle} disabled={googleLoading}>
+          <GoogleIcon /> {googleLoading ? "Redirecting…" : "Sign up with Google"}
+        </button>
 
         <div className="notice">
           <InfoIcon />
