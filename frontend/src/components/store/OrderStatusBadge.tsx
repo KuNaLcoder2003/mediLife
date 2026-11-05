@@ -1,6 +1,6 @@
 import type { OrderStatus } from "../../lib/types";
 
-/** Customer-facing labels, coloured with the same tones as the admin order screens. */
+
 const LABELS: Record<OrderStatus, { label: string; tone: "amber" | "blue" | "purple" | "green" | "red" }> = {
     CREATED: { label: "Placed", tone: "amber" },
     CONFIRMED: { label: "Confirmed", tone: "blue" },

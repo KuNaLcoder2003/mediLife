@@ -26,7 +26,7 @@ export default function ProtectedRoute({ roles, children }: ProtectedRouteProps)
   return children ? <>{children}</> : <Outlet />;
 }
 
-/** For /login: send signed-in users back to where they were going. */
+/** For /login => send signed-in users back to where they were going. */
 export function PublicOnlyRoute({ children }: { children: ReactNode }) {
   const { status } = useAuth();
   const location = useLocation();

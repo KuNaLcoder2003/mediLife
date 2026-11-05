@@ -15,7 +15,7 @@ export default function CancelOrderButton({ order, onCancelled, block = false }:
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Units, matching the "Items (n)" count on the order page
+
     const items = order.orderedProducts.reduce((sum, line) => sum + (line.quantity ?? 1), 0);
 
     const confirm = async () => {

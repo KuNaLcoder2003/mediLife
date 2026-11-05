@@ -1,7 +1,7 @@
 import type { Order } from "../../lib/types";
 import type { InvoiceCustomer } from "./InvoiceDocument";
 
-/** Builds the PDF in the browser and saves it. react-pdf is fetched only on first use. */
+/** Builds the PDF in the browser and saves it. react-pdf library is fetched only on first use. */
 export async function downloadInvoice(order: Order, customer: InvoiceCustomer): Promise<void> {
     const { createInvoiceBlob } = await import("./RenderInvoice");
     const blob = await createInvoiceBlob(order, customer);

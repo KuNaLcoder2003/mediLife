@@ -8,11 +8,7 @@ import { useQuery } from "../../hooks/useQuery";
 import { orderApi } from "../../lib/api";
 import { firstName, formatDate, formatPrice, shortId } from "../../lib/format";
 
-/**
- * Landing page after payment: /success?orderId=...
- * It only reads the order (the server checks ownership) and never changes anything,
- * so opening or refreshing the URL is always safe.
- */
+
 export default function OrderSuccessPage() {
     const [params] = useSearchParams();
     const orderId = (params.get("orderId") ?? "").trim();

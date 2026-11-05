@@ -15,7 +15,6 @@ export interface CartItem {
 
 export interface CartContextValue {
   items: CartItem[];
-  /** Total units across all lines. */
   count: number;
   add: (product: Product, quantity?: number) => void;
   setQuantity: (productId: string, quantity: number) => void;

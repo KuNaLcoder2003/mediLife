@@ -3,20 +3,11 @@ import { SELLER } from "../../lib/config";
 import { formatDate, formatPrice } from "../../lib/format";
 import type { Order } from "../../lib/types";
 
-/*
- * This module is loaded on demand (via renderInvoice.tsx / downloadInvoice.ts),
- * so @react-pdf/renderer never ends up in the main bundle.
- *
- * Fonts: the built-in Helvetica only covers Latin-1. If your currency symbol is
- * outside it (₹, for example), register a font that has it:
- *   Font.register({ family: "Inter", src: "/fonts/Inter-Regular.ttf" })
- * and set fontFamily: "Inter" on styles.page.
- */
 
-// Never hyphenate: IDs like 01K3ZQ8M… must not be split across lines.
+
+
 Font.registerHyphenationCallback((word) => [word]);
 
-/** A4 is 595 × 842 pt. The footer is placed from the top because `bottom` is unreliable on fixed elements. */
 const A4_HEIGHT = 842;
 
 export interface InvoiceCustomer {
@@ -78,7 +69,6 @@ const styles = StyleSheet.create({
     },
 });
 
-/** Intl can emit narrow/no-break spaces that the built-in PDF fonts can't draw. */
 const pdfText = (value: string) => value.replace(/[\u202f\u00a0]/g, " ");
 const money = (value: number) => pdfText(formatPrice(value));
 

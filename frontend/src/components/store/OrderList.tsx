@@ -23,7 +23,7 @@ export default function OrdersList() {
     const orders = useQuery("orders", () => orderApi.list());
     const [notice, setNotice] = useState<string | null>(null);
 
-    // Keep showing the last list while it reloads (e.g. after a cancellation).
+
     const current = orders.data ?? orders.previous;
 
     if (orders.loading && !current) {

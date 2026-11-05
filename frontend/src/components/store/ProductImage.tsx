@@ -7,7 +7,6 @@ interface ProductImageProps {
   className?: string;
 }
 
-/** Product photo with a neutral fallback when there's no image or it fails to load. */
 export default function ProductImage({ src, alt, className = "" }: ProductImageProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 

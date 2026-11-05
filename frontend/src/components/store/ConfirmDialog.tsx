@@ -14,11 +14,7 @@ interface ConfirmDialogProps {
     onClose: () => void;
 }
 
-/**
- * Modal confirmation built on the native <dialog> element, which gives focus
- * trapping, Escape to close and a backdrop for free. The safe action comes first
- * so it receives focus when the dialog opens.
- */
+
 export default function ConfirmDialog({
     open,
     title,
@@ -53,7 +49,7 @@ export default function ConfirmDialog({
                 if (!busy) onClose();
             }}
             onClick={(e) => {
-                // Click on the backdrop (outside the content box)
+
                 if (e.target === e.currentTarget && !busy) onClose();
             }}
         >

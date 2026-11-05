@@ -21,7 +21,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<AuthStatus>("checking");
 
-  // Keep React in sync with the token store (refresh, logout, failed refresh).
+  // Keep FRONTEND in sync with the token store (refresh, logout, failed refresh).
   useEffect(
     () =>
       tokenStore.subscribe((next) => {
@@ -34,8 +34,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // On load: use the stored access token, or try the refresh cookie
-  // (this is also how a Google sign-in lands, since that flow only sets the cookie).
+  // On load -> use the stored access token, or try the refresh cookie
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -81,7 +80,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await authApi.logout();
     } catch {
-      /* the server route may not exist yet; clear the local session anyway */
+      /* the server route may not exist , so clear the local session anyway */
     }
     tokenStore.set(null);
   }, []);
