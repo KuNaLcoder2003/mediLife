@@ -1,18 +1,17 @@
-import type { Product } from "../../lib/types";
-import ProductCard from "./ProductCard";
+import type { ProductView } from "../../lib/Homedata";
+import { ProductCard } from "./Productcard";
 
-export function ProductGrid({ products }: { products: Product[] }) {
+export function ProductGrid({ products }: { products: ProductView[] }) {
   return (
     <ul className="ml-grid">
       {products.map((p) => (
         <li key={p.id}>
-          <ProductCard product={p} />
+          <ProductCard product={p} onAdd={() => true} />
         </li>
       ))}
     </ul>
   );
 }
-
 export function ProductGridSkeleton({ count = 8 }: { count?: number }) {
   return (
     <ul className="ml-grid" aria-busy="true" aria-label="Loading products">

@@ -69,5 +69,18 @@ export const PencilIcon = () => (<svg {...p} width={16} height={16}><path d="M4 
 export const DotsIcon = () => (<svg {...p} width={16} height={16} fill="currentColor" stroke="none"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>);
 export const DownloadIcon = () => (<svg {...p}><path d="M12 4v11M7 11l5 5 5-5M4 20h16" /></svg>);
 export const NextIcon = () => (<svg {...p}><path d="M9 6l6 6-6 6" /></svg>);
+export const PrinterIcon = () => (<svg {...p}><path d="M7 9V4h10v5M7 17H5a1 1 0 01-1-1v-5a2 2 0 012-2h12a2 2 0 012 2v5a1 1 0 01-1 1h-2M7 14h10v6H7z" /></svg>);
 
-  export const PrinterIcon = () => (<svg {...p}><path d="M7 9V4h10v5M7 17H5a1 1 0 01-1-1v-5a2 2 0 012-2h12a2 2 0 012 2v5a1 1 0 01-1 1h-2M7 14h10v6H7z" /></svg>);
+// Home page icons
+export const PulseIcon = () => (<svg {...p}><path d="M3 12h4l2-5 4 10 2-5h6" /></svg>);
+export const DropIcon = () => (<svg {...p}><path d="M12 3c3.5 4.5 6 7.5 6 11a6 6 0 01-12 0c0-3.5 2.5-6.5 6-11z" /></svg>);
+export const MaskIcon = () => (<svg {...p}><path d="M3 9h18M5 9c0 5 3 8 7 8s7-3 7-8" /></svg>);
+export const WalkerIcon = () => (<svg {...p}><path d="M5 21L12 4l7 17M8.5 15h7" /></svg>);
+export const PillIcon = () => (<svg {...p}><rect x="2.5" y="8.5" width="19" height="7" rx="3.5" transform="rotate(-45 12 12)" /><path d="M9.2 9.2l5.6 5.6" /></svg>);
+export const HomeIcon = () => (<svg {...p}><path d="M4 11l8-7 8 7v9H4z" /><path d="M10 20v-5h4v5" /></svg>);
+export const TruckIcon = () => (<svg {...p}><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7" /><circle cx="7" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></svg>);
+export const HeadsetIcon = () => (<svg {...p}><path d="M4 14v-2a8 8 0 0116 0v2" /><rect x="3" y="14" width="4" height="6" rx="1.5" /><rect x="17" y="14" width="4" height="6" rx="1.5" /></svg>);
+export const CartIcon = () => (<svg {...p}><path d="M3 4h3l2.5 11h10L21 8H7" /><circle cx="10" cy="19.5" r="1.4" /><circle cx="17" cy="19.5" r="1.4" /></svg>);
+export const ChevronDownIcon = () => (<svg {...p}><path d="M6 9l6 6 6-6" /></svg>);
+export const ArrowRightIcon = () => (<svg {...p}><path d="M5 12h14M13 6l6 6-6 6" /></svg>);
+ 

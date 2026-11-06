@@ -11,6 +11,7 @@ import { useQuery } from "../../hooks/useQuery";
 import { productApi } from "../../lib/api";
 import { ApiError } from "../../lib/http";
 import type { Product } from "../../lib/types";
+import { toView } from "../../lib/Homedata";
 
 export default function ProductPage() {
   const { productId = "" } = useParams();
@@ -85,7 +86,8 @@ function ProductDetails({ product }: { product: Product }) {
 
   const related = useQuery(categoryName ? `related:${product.id}` : null, (signal) => productApi.list(undefined, signal));
   const relatedProducts = (related.data ?? [])
-    .filter((p) => p.id !== product.id && p.category?.category === categoryName && p.quantity > 0)
+  const relatedProductViews = relatedProducts.map((p) => toView(p, []))
+    .filter((p) => p.id !== product.id && p.category === categoryName && p.quantity > 0)
     .slice(0, 4);
 
   const addToBag = () => {
@@ -181,7 +183,7 @@ function ProductDetails({ product }: { product: Product }) {
           <div className="ml-section-head">
             <h2 id="related-title">More in {categoryName}</h2>
           </div>
-          <ProductGrid products={relatedProducts} />
+          <ProductGrid products={relatedProductViews} />
         </section>
       )}
     </div>
