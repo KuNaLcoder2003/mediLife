@@ -93,4 +93,6 @@ export const ArrowRightIcon = () => (<svg {...p}><path d="M5 12h14M13 6l6 6-6 6"
 
    //cart icon
    export const ArrowLeftIcon = () => (<svg {...p}><path d="M19 12H5M11 6l-6 6 6 6" /></svg>);
+   export const PinIcon = () => (<svg {...p}><path d="M12 21s-6-5.2-6-10a6 6 0 0112 0c0 4.8-6 10-6 10z" /><circle cx="12" cy="11" r="2.2" /></svg>);
+   export const CardIcon = () => (<svg {...p}><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 10h18M7 15h3" /></svg>);
  

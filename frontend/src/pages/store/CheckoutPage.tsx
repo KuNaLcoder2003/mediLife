@@ -1,427 +1,8 @@
-// import { useEffect, useRef, useState } from "react";
-// import { Link } from "react-router-dom";
-// import { useAuth } from "../../auth/auth-context";
-// import { useCart } from "../../cart/cart-context";
-// import AddressForm from "../../components/store/AddressForm";
-// import FullPageLoader from "../../components/store/FullPageLoader";
-// import Icon from "../../components/store/Icon";
-// import ProductImage from "../../components/store/ProductImage";
-// import QuantityStepper from "../../components/store/QuantityStepper";
-// import { useQuery } from "../../hooks/useQuery";
-// import { orderApi, productApi } from "../../lib/api";
-// import { errorMessage, formatPrice, unitPrice } from "../../lib/format";
-// import { ApiError } from "../../lib/http";
-// import type { Address, Product } from "../../lib/types";
-// import { useRealtime } from "../../lib/realtime-context";
-
-// interface OrderSummary {
-//   total: number;
-//   units: number;
-//   address: Address | undefined;
-// }
-
-// /**
-//  * idle -> placing (POST /newOrder) -> waiting (for the WebSocket) -> redirecting (to the payment page)
-//  * Anything that goes wrong lands back on idle with `orderError` set.
-//  */
-// type PaymentState =
-//   | { kind: "idle" }
-//   | { kind: "placing"; summary: OrderSummary }
-//   | { kind: "waiting"; summary: OrderSummary; orderId?: string; message: string }
-//   | { kind: "redirecting"; summary: OrderSummary; url: string };
-
-// const SLOW_AFTER_MS = 30_000;
-
-// /** Only follow links that are real web URLs (never javascript: etc.). */
-// function safePaymentUrl(raw: string): string | null {
-//   try {
-//     const url = new URL(raw);
-//     if (url.protocol === "https:") return url.toString();
-//     if (url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1")) return url.toString();
-//   } catch {
-//     /* not a URL */
-//   }
-//   return null;
-// }
-
-// const formatAddress = (a: Address) => [a.addressLine1, a.addressLine2, a.postalCode].filter(Boolean).join(", ");
-
-// export default function CheckoutPage() {
-//   const { user, reloadUser } = useAuth();
-//   const cart = useCart();
-//   const realtime = useRealtime();
-
-//   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
-//   const [addingAddress, setAddingAddress] = useState(false);
-//   const [payment, setPayment] = useState<PaymentState>({ kind: "idle" });
-//   const [orderError, setOrderError] = useState<string | null>(null);
-//   const [slow, setSlow] = useState(false);
-//   const placing = payment.kind !== "idle";
-
-//   // Which order we're waiting on. Set synchronously in payNow so a WebSocket
-//   // message that arrives before the HTTP response still gets matched.
-//   const pendingRef = useRef<{ orderId?: string } | null>(null);
-
-//   // Re-check price and stock for everything in the bag whenever its contents change.
-//   const ids = cart.items
-//     .map((i) => i.productId)
-//     .sort()
-//     .join(",");
-//   const stock = useQuery(ids ? `stock:${ids}` : null, async () => {
-//     const list = ids.split(",");
-//     const results = await Promise.allSettled(list.map((id) => productApi.getById(id)));
-//     const fresh: Product[] = [];
-//     const unavailable: string[] = [];
-//     results.forEach((r, i) => {
-//       if (r.status === "fulfilled" && r.value) {
-//         fresh.push(r.value);
-//         if (r.value.quantity <= 0) unavailable.push(r.value.id);
-//       } else {
-//         unavailable.push(list[i] as string);
-//       }
-//     });
-//     cart.sync(fresh);
-//     return new Set(unavailable);
-//   });
-
-//   const { clear: clearCart } = cart;
-//   const reloadStock = stock.reload;
-
-//   // Payment link / inventory notifications for the order being placed.
-//   useEffect(
-//     () =>
-//       realtime.subscribe((message) => {
-//         const pending = pendingRef.current;
-//         if (!pending) return;
-//         if (message.type !== "PAYMENT_LINK_CREATED" && message.type !== "INVENTORY_UNAVAILABLE") return;
-//         if (message.orderId && pending.orderId && message.orderId !== pending.orderId) return;
-
-//         pendingRef.current = null;
-
-//         if (message.type === "PAYMENT_LINK_CREATED") {
-//           const url = safePaymentUrl(message.paymentUrl);
-//           if (!url) {
-//             setPayment({ kind: "idle" });
-//             setOrderError("We received an invalid payment link. Please contact support before trying again.");
-//             return;
-//           }
-//           clearCart();
-//           setPayment((p) => (p.kind === "idle" ? p : { kind: "redirecting", summary: p.summary, url }));
-//         } else {
-//           setPayment({ kind: "idle" });
-//           setOrderError(
-//             message.message ??
-//             "Some items went out of stock while we confirmed your order. Update your bag and try again.",
-//           );
-//           reloadStock();
-//         }
-//       }),
-//     [realtime, clearCart, reloadStock],
-//   );
-
-//   // Send the user to the payment page as soon as the link is ready.
-//   useEffect(() => {
-//     if (payment.kind === "redirecting") window.location.assign(payment.url);
-//   }, [payment]);
-
-//   // Reassure the user if the payment link takes a while.
-//   useEffect(() => {
-//     if (payment.kind !== "waiting") return;
-//     const id = window.setTimeout(() => setSlow(true), SLOW_AFTER_MS);
-//     return () => window.clearTimeout(id);
-//   }, [payment.kind]);
-
-//   if (!user) return <FullPageLoader label="Loading your details…" />;
-
-//   /* ---------- Waiting for / following the payment link ---------- */
-//   if (payment.kind === "waiting" || payment.kind === "redirecting") {
-//     const { summary } = payment;
-//     const redirecting = payment.kind === "redirecting";
-//     return (
-//       <div className="ml-container ml-checkout">
-//         <div className="ml-success" role="status" aria-live="polite">
-//           {redirecting ? (
-//             <span className="ml-success-icon">
-//               <Icon name="check" size={28} />
-//             </span>
-//           ) : (
-//             <span className="ml-spinner ml-spinner--lg" aria-hidden="true" />
-//           )}
-//           <h1>{redirecting ? "Taking you to payment" : "Preparing your payment"}</h1>
-//           <p>
-//             {redirecting
-//               ? "Your payment page is opening."
-//               : "Your order is confirmed. We're creating a secure payment link, which usually takes a few seconds."}
-//           </p>
-//           {slow && !redirecting && (
-//             <p className="ml-notice">
-//               This is taking longer than usual. Keep this page open and the payment page will open as soon as it's ready.
-//             </p>
-//           )}
-//           <dl className="ml-success-facts">
-//             <div>
-//               <dt>Items</dt>
-//               <dd>{summary.units}</dd>
-//             </div>
-//             <div>
-//               <dt>Total</dt>
-//               <dd>{formatPrice(summary.total)}</dd>
-//             </div>
-//             {summary.address && (
-//               <div>
-//                 <dt>Delivering to</dt>
-//                 <dd>{formatAddress(summary.address)}</dd>
-//               </div>
-//             )}
-//           </dl>
-//           {redirecting && (
-//             <a href={payment.url} className="ml-btn ml-btn--primary">
-//               Continue to payment
-//             </a>
-//           )}
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   /* ---------- Empty bag ---------- */
-//   if (cart.items.length === 0) {
-//     return (
-//       <div className="ml-container ml-checkout">
-//         <div className="ml-empty">
-//           <h1>Your bag is empty</h1>
-//           <p>Add products to your bag, then come back here to check out.</p>
-//           <Link to="/products" className="ml-btn ml-btn--primary">
-//             Browse products
-//           </Link>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   const addresses = user.addresses;
-//   const addressId =
-//     selectedAddress && addresses.some((a) => a.id === selectedAddress) ? selectedAddress : (addresses[0]?.id ?? null);
-//   const address = addresses.find((a) => a.id === addressId);
-
-//   const unavailable = stock.data ?? new Set<string>();
-//   const hasUnavailable = cart.items.some((i) => unavailable.has(i.productId));
-
-//   const mrp = cart.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-//   const total = cart.items.reduce((sum, i) => sum + unitPrice(i.price, i.discount) * i.quantity, 0);
-//   const savings = mrp - total;
-
-//   const blocker = !addressId
-//     ? "Add a delivery address to continue."
-//     : hasUnavailable
-//       ? "Remove unavailable items to continue."
-//       : stock.loading
-//         ? "Checking stock…"
-//         : realtime.status === "offline"
-//           ? "Can't reach the payment service. Retrying…"
-//           : realtime.status !== "ready"
-//             ? "Connecting to the payment service…"
-//             : null;
-
-//   const handleAddressSaved = async () => {
-//     const me = await reloadUser();
-//     const newest = [...(me?.addresses ?? [])].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))[0];
-//     if (newest) setSelectedAddress(newest.id);
-//     setAddingAddress(false);
-//   };
-
-//   const payNow = async () => {
-//     if (!addressId || blocker || placing) return;
-//     const summary: OrderSummary = { total, units: cart.count, address };
-
-//     pendingRef.current = {};
-//     setOrderError(null);
-//     setSlow(false);
-//     setPayment({ kind: "placing", summary });
-
-//     try {
-//       const order = await orderApi.create(user.id, {
-//         addressId,
-//         products: cart.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-//       });
-//       if (pendingRef.current) pendingRef.current.orderId = order.orderId;
-//       // If the link already arrived over the socket, we're redirecting: leave that alone.
-//       setPayment((p) =>
-//         p.kind === "placing" ? { kind: "waiting", summary: p.summary, orderId: order.orderId, message: order.message } : p,
-//       );
-//       window.scrollTo({ top: 0 });
-//     } catch (err) {
-//       pendingRef.current = null;
-//       setPayment({ kind: "idle" });
-//       setOrderError(errorMessage(err, "Your order couldn't be placed. Try again."));
-//       // 402 = some products are no longer available: refresh stock so they're flagged.
-//       if (err instanceof ApiError && err.status === 402) stock.reload();
-//     }
-//   };
-
-//   return (
-//     <div className="ml-container ml-checkout">
-//       <h1>Checkout</h1>
-
-//       <div className="ml-checkout-grid">
-//         <div className="ml-checkout-main">
-//           {/* ---------- Address ---------- */}
-//           <section className="ml-panel" aria-labelledby="address-title">
-//             <div className="ml-panel-head">
-//               <h2 id="address-title">Delivery address</h2>
-//               {addresses.length > 0 && !addingAddress && (
-//                 <button type="button" className="ml-link" onClick={() => setAddingAddress(true)}>
-//                   Add new address
-//                 </button>
-//               )}
-//             </div>
-
-//             {addresses.length > 0 && (
-//               <fieldset className="ml-address-list">
-//                 <legend className="ml-sr">Choose a delivery address</legend>
-//                 {addresses.map((a) => {
-//                   const checked = a.id === addressId;
-//                   return (
-//                     <label key={a.id} className={`ml-address${checked ? " is-selected" : ""}`}>
-//                       <input type="radio" name="address" value={a.id} checked={checked} onChange={() => setSelectedAddress(a.id)} />
-//                       <Icon name="pin" size={18} />
-//                       <span className="ml-address-body">
-//                         <strong>{a.addressLine1}</strong>
-//                         {a.addressLine2 && <span>{a.addressLine2}</span>}
-//                         <span>{a.postalCode}</span>
-//                       </span>
-//                     </label>
-//                   );
-//                 })}
-//               </fieldset>
-//             )}
-
-//             {addresses.length === 0 && !addingAddress && (
-//               <div className="ml-panel-empty">
-//                 <p>You don't have a saved address yet.</p>
-//                 <button type="button" className="ml-btn ml-btn--ghost" onClick={() => setAddingAddress(true)}>
-//                   <Icon name="plus" size={16} /> Add address
-//                 </button>
-//               </div>
-//             )}
-
-//             {addingAddress && (
-//               <AddressForm onSaved={handleAddressSaved} onCancel={() => setAddingAddress(false)} />
-//             )}
-//           </section>
-
-//           {/* ---------- Items ---------- */}
-//           <section className="ml-panel" aria-labelledby="items-title">
-//             <div className="ml-panel-head">
-//               <h2 id="items-title">
-//                 Items <span className="ml-muted">({cart.count})</span>
-//               </h2>
-//             </div>
-//             <ul className="ml-lines">
-//               {cart.items.map((item) => {
-//                 const isUnavailable = unavailable.has(item.productId);
-//                 const each = unitPrice(item.price, item.discount);
-//                 return (
-//                   <li key={item.productId} className={`ml-line${isUnavailable ? " is-unavailable" : ""}`}>
-//                     <ProductImage src={item.imageUrl} alt="" className="ml-line-img" />
-//                     <div className="ml-line-info">
-//                       <Link to={`/products/${item.productId}`} className="ml-line-name">
-//                         {item.productName}
-//                       </Link>
-//                       <span className="ml-muted ml-small">
-//                         {formatPrice(each)} each
-//                         {item.price > each && (
-//                           <>
-//                             {" "}
-//                             <s>{formatPrice(item.price)}</s>
-//                           </>
-//                         )}
-//                       </span>
-//                       {isUnavailable && <span className="ml-stock ml-stock--out">No longer available</span>}
-//                     </div>
-//                     <div className="ml-line-qty">
-//                       <QuantityStepper
-//                         value={item.quantity}
-//                         max={Math.max(item.stock, 1)}
-//                         label={`Quantity of ${item.productName}`}
-//                         onChange={(n) => cart.setQuantity(item.productId, n)}
-//                         disabled={isUnavailable || placing}
-//                       />
-//                       <button
-//                         type="button"
-//                         className="ml-link ml-link--muted"
-//                         onClick={() => cart.remove(item.productId)}
-//                         disabled={placing}
-//                       >
-//                         Remove
-//                       </button>
-//                     </div>
-//                     <span className="ml-line-total">{formatPrice(each * item.quantity)}</span>
-//                   </li>
-//                 );
-//               })}
-//             </ul>
-//           </section>
-//         </div>
-
-//         {/* ---------- Summary ---------- */}
-//         <aside className="ml-summary" aria-labelledby="summary-title">
-//           <h2 id="summary-title">Order summary</h2>
-//           <dl className="ml-summary-rows">
-//             <div>
-//               <dt>Items ({cart.count})</dt>
-//               <dd>{formatPrice(mrp)}</dd>
-//             </div>
-//             {savings > 0.004 && (
-//               <div className="ml-summary-save">
-//                 <dt>Discount</dt>
-//                 <dd>−{formatPrice(savings)}</dd>
-//               </div>
-//             )}
-//             <div className="ml-summary-total">
-//               <dt>Total</dt>
-//               <dd>{formatPrice(total)}</dd>
-//             </div>
-//           </dl>
-
-//           {address && (
-//             <p className="ml-summary-address">
-//               <Icon name="pin" size={16} />
-//               <span>Delivering to {formatAddress(address)}</span>
-//             </p>
-//           )}
-
-//           {orderError && (
-//             <div className="ml-alert ml-alert--error" role="alert">
-//               {orderError}
-//             </div>
-//           )}
-
-//           <button
-//             type="button"
-//             className="ml-btn ml-btn--primary ml-btn--block ml-btn--lg"
-//             onClick={() => void payNow()}
-//             disabled={placing || Boolean(blocker)}
-//             aria-describedby={blocker ? "pay-blocker" : undefined}
-//           >
-//             {payment.kind === "placing" ? "Placing order…" : "Pay now"}
-//           </button>
-//           {blocker && (
-//             <p id="pay-blocker" className="ml-muted ml-small ml-center">
-//               {blocker}
-//             </p>
-//           )}
-//         </aside>
-//       </div>
-//     </div>
-//   );
-// }
-
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth/auth-context";
 import { useCart, type CartItem } from "../../cart/cart-context";
-import { AlertIcon, ArrowLeftIcon, ArrowRightIcon, CheckIcon, LockIcon, ShieldIcon, TruckIcon } from "../../components/store/auth/Icons";
+import { AlertIcon, ArrowLeftIcon, ArrowRightIcon, CardIcon, CheckIcon, LockIcon, PinIcon, ShieldIcon, TruckIcon } from "../../components/store/auth/Icons";
 import AddressForm from "../../components/store/AddressForm";
 import CategoryIcon from "../../components/store/CategoryIcon";
 import FullPageLoader from "../../components/store/FullPageLoader";
@@ -434,7 +15,7 @@ import { ApiError } from "../../lib/http";
 import type { Address, Product } from "../../lib/types";
 import { useRealtime } from "../../lib/realtime-context";
 
-// "Tomorrow"(there is no delivery API)same as the product page
+// "Tomorrow" estimate (there is no delivery API), same as the product page.
 const ARRIVES = new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short" }).format(
   new Date(Date.now() + 86_400_000),
 );
@@ -456,7 +37,6 @@ type PaymentState =
   | { kind: "redirecting"; summary: OrderSummary; url: string };
 
 const SLOW_AFTER_MS = 30_000;
-
 function safePaymentUrl(raw: string): string | null {
   try {
     const url = new URL(raw);
@@ -474,6 +54,7 @@ export default function CheckoutPage() {
   const { user, reloadUser } = useAuth();
   const cart = useCart();
   const realtime = useRealtime();
+  const [params, setParams] = useSearchParams();
 
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [addingAddress, setAddingAddress] = useState(false);
@@ -512,7 +93,7 @@ export default function CheckoutPage() {
   const { clear: clearCart } = cart;
   const reloadStock = stock.reload;
 
-  // Payment link / inventory notifications for the order being placed
+  // Payment link / inventory notifications for the order being placed.
   useEffect(
     () =>
       realtime.subscribe((message) => {
@@ -544,12 +125,11 @@ export default function CheckoutPage() {
     [realtime, clearCart, reloadStock],
   );
 
-  // Send the user to the payment page as soon as the link is ready
   useEffect(() => {
     if (payment.kind === "redirecting") window.location.assign(payment.url);
   }, [payment]);
 
-  // Reassure the user if the payment link takes a while.
+  
   useEffect(() => {
     if (payment.kind !== "waiting") return;
     const id = window.setTimeout(() => setSlow(true), SLOW_AFTER_MS);
@@ -558,7 +138,7 @@ export default function CheckoutPage() {
 
   if (!user) return <FullPageLoader label="Loading your details…" />;
 
-  /*Waiting for / following the payment link*/
+  /*Waiting for/following the payment link */
   if (payment.kind === "waiting" || payment.kind === "redirecting") {
     const { summary } = payment;
     const redirecting = payment.kind === "redirecting";
@@ -588,7 +168,7 @@ export default function CheckoutPage() {
     );
   }
 
-  /*Empty cart  */
+  /*Empty cart*/
   if (cart.items.length === 0) {
     return (
       <div className="ct-page">
@@ -665,6 +245,7 @@ export default function CheckoutPage() {
         products: cart.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       });
       if (pendingRef.current) pendingRef.current.orderId = order.orderId;
+      
       setPayment((p) =>
         p.kind === "placing" ? { kind: "waiting", summary: p.summary, orderId: order.orderId, message: order.message } : p,
       );
@@ -673,11 +254,176 @@ export default function CheckoutPage() {
       pendingRef.current = null;
       setPayment({ kind: "idle" });
       setOrderError(errorMessage(err, "Your order couldn't be placed. Try again."));
-      // 402 = some products are no longer available: refresh stock so they're flagged.
+
       if (err instanceof ApiError && err.status === 402) stock.reload();
     }
   };
 
+  const step = params.get("step") === "checkout" && payable.length > 0 ? "checkout" : "cart";
+  const goTo = (next: "cart" | "checkout") => {
+    setParams(next === "cart" ? {} : { step: next });
+    window.scrollTo({ top: 0 });
+  };
+  const addressNumber = addresses.findIndex((a) => a.id === addressId) + 1;
+
+  /* address + payment*/
+  if (step === "checkout") {
+    return (
+      <div className="ct-page">
+        <div className="hm-wide">
+          <ol className="ct-steps" aria-label="Checkout progress">
+            <li className="is-done">
+              <button type="button" onClick={() => goTo("cart")} disabled={placing}>
+                <span><CheckIcon /></span> Cart
+              </button>
+            </li>
+            <li className="ct-steps__line is-on" aria-hidden="true" />
+            <li className="is-current" aria-current="step"><span>2</span> Address &amp; payment</li>
+            <li className="ct-steps__line" aria-hidden="true" />
+            <li><span>3</span> Confirmation</li>
+          </ol>
+
+          <div className="ct-layout">
+            <div className="ct-stack">
+              {/*Address*/}
+              <section className="ct-card ct-panel" aria-labelledby="address-title">
+                <header className="ct-panel__head">
+                  <span className="ct-num">1</span>
+                  <h2 id="address-title">Delivery address</h2>
+                  <p>Choose where to deliver this order</p>
+                </header>
+
+                <fieldset className="ct-addrgrid">
+                  <legend className="hm-sr">Choose a delivery address</legend>
+                  {addresses.map((a, n) => {
+                    const checked = a.id === addressId;
+                    return (
+                      <label key={a.id} className={`ct-addrcard${checked ? " is-selected" : ""}`}>
+                        <span className="ct-addrcard__top">
+                          <input type="radio" name="address" value={a.id} checked={checked} onChange={() => setSelectedAddress(a.id)} disabled={placing} />
+                          <strong>Address {n + 1}</strong>
+                          {n === 0 && <em>Default</em>}
+                        </span>
+                        <span className="ct-addrcard__body">
+                          <strong>{user.name}</strong>
+                          <span>{a.addressLine1}</span>
+                          {a.addressLine2 && <span>{a.addressLine2}</span>}
+                          <span>{a.postalCode}</span>
+                          {user.mobile && <span>{user.mobile}</span>}
+                        </span>
+                        <span className="ct-addrcard__foot">Delivery by {ARRIVES}</span>
+                      </label>
+                    );
+                  })}
+                  <button type="button" className="ct-addnew" onClick={() => setAddingAddress(true)} disabled={addingAddress || placing}>
+                    <span aria-hidden="true">+</span>
+                    Add a new address
+                  </button>
+                </fieldset>
+
+                {addingAddress && (
+                  <div className="ct-newaddr">
+                    <AddressForm onSaved={handleAddressSaved} onCancel={() => setAddingAddress(false)} />
+                  </div>
+                )}
+              </section>
+
+              {/*Delivery speed*/}
+              <section className="ct-card ct-panel" aria-labelledby="speed-title">
+                <header className="ct-panel__head">
+                  <span className="ct-num">2</span>
+                  <h2 id="speed-title">Delivery speed</h2>
+                </header>
+                <div className="ct-opts">
+                  <label className="ct-opt is-selected">
+                    <input type="radio" name="speed" checked onChange={() => undefined} />
+                    <span><strong>Standard delivery</strong><small>Arrives {ARRIVES}</small></span>
+                    <b>Free</b>
+                  </label>
+                  <label className="ct-opt is-disabled">
+                    <input type="radio" name="speed" disabled />
+                    <span><strong>Express delivery</strong><small>Coming soon</small></span>
+                  </label>
+                </div>
+              </section>
+
+              {/*Payment*/}
+              <section className="ct-card ct-panel" aria-labelledby="pay-title">
+                <header className="ct-panel__head">
+                  <span className="ct-num">3</span>
+                  <h2 id="pay-title">Payment method</h2>
+                </header>
+                <label className="ct-opt is-selected">
+                  <input type="radio" name="payment" checked onChange={() => undefined} />
+                  <span className="ct-opt__icon"><CardIcon /></span>
+                  <span><strong>Pay securely online</strong><small>You’ll choose how to pay on our secure payment page next.</small></span>
+                </label>
+              </section>
+            </div>
+
+            {/*summary*/}
+            <aside aria-label="Order summary">
+              <div className="ct-card ct-summary">
+                <h2>Order summary</h2>
+
+                {address && (
+                  <p className="ct-deliver-to ct-deliver-to--box">
+                    <PinIcon />
+                    <span>
+                      <strong>Delivering to Address {addressNumber}</strong>
+                      <br />
+                      {address.postalCode} · Delivery by {ARRIVES}
+                    </span>
+                  </p>
+                )}
+
+                <ul className="ct-lines">
+                  {payable.map((item) => (
+                    <li key={item.productId}>
+                      <span className={`ct-lines__thumb hm-tone-${toneOf(item.category ?? "")}`}>
+                        {item.imageUrl ? <img src={item.imageUrl} alt="" /> : <CategoryIcon name={item.category ?? ""} />}
+                        <b aria-label={`Quantity ${item.quantity}`}>{item.quantity}</b>
+                      </span>
+                      <span>{item.productName}</span>
+                      <strong>{formatPrice(unitPrice(item.price, item.discount) * item.quantity)}</strong>
+                    </li>
+                  ))}
+                </ul>
+
+                <dl>
+                  <div><dt>Items total (MRP)</dt><dd>{formatPrice(mrp)}</dd></div>
+                  <div><dt>Discount</dt><dd className="ct-green">{savings > 0.004 ? `− ${formatPrice(savings)}` : formatPrice(0)}</dd></div>
+                  <div><dt>Delivery</dt><dd className={freeDelivery ? "ct-green" : undefined}>{freeDelivery ? "Free" : "Added at checkout"}</dd></div>
+                </dl>
+                <div className="ct-total">
+                  <strong>To pay</strong>
+                  <strong>{formatPrice(total)}</strong>
+                </div>
+
+                {orderError && <p className="ct-alert" role="alert"><AlertIcon />{orderError}</p>}
+
+                <button
+                  type="button"
+                  className="hm-btn hm-btn--solid hm-btn--lg ct-checkout"
+                  onClick={() => void payNow()}
+                  disabled={placing || Boolean(blocker)}
+                  aria-describedby={blocker ? "pay-blocker" : undefined}
+                >
+                  {payment.kind === "placing" ? "Placing order…" : `Pay ${formatPrice(total)} & place order`}
+                </button>
+                {blocker && <p id="pay-blocker" className="ct-blocker">{blocker}</p>}
+                <p className="ct-terms">
+                  By placing this order you agree to our <a href="#">Terms</a> and <a href="#">Return policy</a>.
+                </p>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /*cart*/
   return (
     <div className="ct-page">
       <div className="hm-wide">
@@ -702,7 +448,6 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* Items*/}
             <ul className="ct-card ct-list" aria-label="Items in your cart">
               {cart.items.map((item) => {
                 const out = isOut(item);
@@ -722,7 +467,7 @@ export default function CheckoutPage() {
                         {out ? "Out of stock" : low ? `Only ${item.stock} left` : "In stock"}
                       </p>
                       <div className="ct-actions">
-                        <button type="button" className="ct-remove" onClick={() => cart.remove(item.productId)} disabled={placing}>Remove</button>
+                        <button type="button" className="ct-remove" onClick={() => cart.remove(item.productId)}>Remove</button>
                       </div>
                     </div>
 
@@ -730,9 +475,9 @@ export default function CheckoutPage() {
                       <span />
                     ) : (
                       <div className="ct-stepper" role="group" aria-label={`Quantity of ${item.productName}`}>
-                        <button type="button" onClick={() => cart.setQuantity(item.productId, item.quantity - 1)} disabled={placing || item.quantity <= 1} aria-label="Decrease quantity">−</button>
+                        <button type="button" onClick={() => cart.setQuantity(item.productId, item.quantity - 1)} disabled={item.quantity <= 1} aria-label="Decrease quantity">−</button>
                         <output aria-live="polite">{item.quantity}</output>
-                        <button type="button" onClick={() => cart.setQuantity(item.productId, item.quantity + 1)} disabled={placing || item.quantity >= Math.max(item.stock, 1)} aria-label="Increase quantity">+</button>
+                        <button type="button" onClick={() => cart.setQuantity(item.productId, item.quantity + 1)} disabled={item.quantity >= Math.max(item.stock, 1)} aria-label="Increase quantity">+</button>
                       </div>
                     )}
 
@@ -762,44 +507,6 @@ export default function CheckoutPage() {
               </p>
             )}
 
-            {/*Address*/}
-            <section className="ct-card ct-address" aria-labelledby="address-title">
-              <div className="ct-address__head">
-                <h2 id="address-title">Delivery address</h2>
-                {addresses.length > 0 && !addingAddress && (
-                  <button type="button" className="ct-link" onClick={() => setAddingAddress(true)}>Add new address</button>
-                )}
-              </div>
-
-              {addresses.length > 0 && (
-                <fieldset className="ct-address__list">
-                  <legend className="hm-sr">Choose a delivery address</legend>
-                  {addresses.map((a) => {
-                    const checked = a.id === addressId;
-                    return (
-                      <label key={a.id} className={`ct-addr${checked ? " is-selected" : ""}`}>
-                        <input type="radio" name="address" value={a.id} checked={checked} onChange={() => setSelectedAddress(a.id)} />
-                        <span>
-                          <strong>{a.addressLine1}</strong>
-                          {a.addressLine2 && <span>{a.addressLine2}</span>}
-                          <span>{a.postalCode}</span>
-                        </span>
-                      </label>
-                    );
-                  })}
-                </fieldset>
-              )}
-
-              {addresses.length === 0 && !addingAddress && (
-                <div className="ct-address__empty">
-                  <p>You don't have a saved address yet.</p>
-                  <button type="button" className="hm-btn hm-btn--outline" onClick={() => setAddingAddress(true)}>+ Add address</button>
-                </div>
-              )}
-
-              {addingAddress && <AddressForm onSaved={handleAddressSaved} onCancel={() => setAddingAddress(false)} />}
-            </section>
-
             {suggestions.length > 0 && (
               <section className="ct-also" aria-labelledby="also-title">
                 <h2 id="also-title">You might also need</h2>
@@ -813,7 +520,7 @@ export default function CheckoutPage() {
                         <strong>{v.name}</strong>
                         <small>{formatPrice(v.finalPrice)}</small>
                       </div>
-                      <button type="button" onClick={() => cart.add(v.raw, 1)} disabled={placing} aria-label={`Add ${v.name} to cart`}>+</button>
+                      <button type="button" onClick={() => cart.add(v.raw, 1)} aria-label={`Add ${v.name} to cart`}>+</button>
                     </li>
                   ))}
                 </ul>
@@ -821,7 +528,6 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {/* ---------- Summary ---------- */}
           <aside aria-label="Order summary">
             <div className="ct-card ct-summary">
               <h2>Order summary</h2>
@@ -845,25 +551,10 @@ export default function CheckoutPage() {
                 {couponMsg && <p className="ct-coupon__msg" role="status">{couponMsg}</p>}
               </form>
 
-              {address && (
-                <p className="ct-deliver-to">
-                  <TruckIcon />
-                  <span>Delivering to {formatAddress(address)}</span>
-                </p>
-              )}
-
-              {orderError && <p className="ct-alert" role="alert"><AlertIcon />{orderError}</p>}
-
-              <button
-                type="button"
-                className="hm-btn hm-btn--solid hm-btn--lg ct-checkout"
-                onClick={() => void payNow()}
-                disabled={placing || Boolean(blocker)}
-                aria-describedby={blocker ? "pay-blocker" : undefined}
-              >
-                {payment.kind === "placing" ? "Placing order…" : <>Proceed to payment <ArrowRightIcon /></>}
+              <button type="button" className="hm-btn hm-btn--solid hm-btn--lg ct-checkout" onClick={() => goTo("checkout")} disabled={hasUnavailable || payable.length === 0}>
+                Proceed to checkout <ArrowRightIcon />
               </button>
-              {blocker && <p id="pay-blocker" className="ct-blocker">{blocker}</p>}
+              {hasUnavailable && <p className="ct-blocker">Remove unavailable items to continue.</p>}
               <p className="ct-secure"><LockIcon /> Secure checkout</p>
             </div>
 
