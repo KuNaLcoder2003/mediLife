@@ -90,4 +90,7 @@ export const ArrowRightIcon = () => (<svg {...p}><path d="M5 12h14M13 6l6 6-6 6"
    export const MinusIcon = () => (<svg {...p} strokeWidth={2.4}><path d="M5 12h14" /></svg>);
    export const AddIcon = () => (<svg {...p} strokeWidth={2.4}><path d="M12 5v14M5 12h14" /></svg>);
    export const FilterIcon = () => (<svg {...p}><path d="M4 6h16M7 12h10M10 18h4" /></svg>);
+
+   //cart icon
+   export const ArrowLeftIcon = () => (<svg {...p}><path d="M19 12H5M11 6l-6 6 6 6" /></svg>);
  
