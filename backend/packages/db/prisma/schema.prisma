@@ -92,6 +92,7 @@ model Products {
   categoryId String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  disabled Boolean @default(false)
   images ProductIamges[]
   category ProductCategory @relation(fields: [categoryId] , references: [id])
   orderedProducts OrderdProducts[]

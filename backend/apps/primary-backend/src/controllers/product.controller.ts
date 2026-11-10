@@ -106,6 +106,9 @@ export const getProducts = async (req: express.Request, res: express.Response) =
         const keWords: keyWords = req.query as any
         if (!keWords) {
             const products = await prisma.products.findMany({
+                where: {
+                    disabled: false
+                },
                 select: {
                     productName: true,
                     id: true,

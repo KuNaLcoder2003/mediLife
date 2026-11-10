@@ -3,7 +3,8 @@ import { uploadAsset } from "../utility/cloud.js";
 export const fetchProductById = async (productId: string) => {
     const product = await prisma.products.findUnique({
         where: {
-            id: productId
+            id: productId,
+            disabled: false
         },
         select: {
             productName: true,
