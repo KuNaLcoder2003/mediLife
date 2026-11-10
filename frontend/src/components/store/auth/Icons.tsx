@@ -1,8 +1,7 @@
 const p = {
   width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
   strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
-};
-
+}
 export const PlusIcon = () => (
   <svg {...p} width={22} height={22} strokeWidth={3}><path d="M12 5v14M5 12h14" /></svg>
 );
@@ -83,4 +82,12 @@ export const HeadsetIcon = () => (<svg {...p}><path d="M4 14v-2a8 8 0 0116 0v2" 
 export const CartIcon = () => (<svg {...p}><path d="M3 4h3l2.5 11h10L21 8H7" /><circle cx="10" cy="19.5" r="1.4" /><circle cx="17" cy="19.5" r="1.4" /></svg>);
 export const ChevronDownIcon = () => (<svg {...p}><path d="M6 9l6 6 6-6" /></svg>);
 export const ArrowRightIcon = () => (<svg {...p}><path d="M5 12h14M13 6l6 6-6 6" /></svg>);
+
+//Product pg icons
+   export const HeartIcon = () => (<svg {...p}><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z" /></svg>);
+   export const CloseIcon = () => (<svg {...p} width={14} height={14} strokeWidth={2.4}><path d="M6 6l12 12M18 6L6 18" /></svg>);
+   export const PhoneIcon = () => (<svg {...p}><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" /></svg>);
+   export const MinusIcon = () => (<svg {...p} strokeWidth={2.4}><path d="M5 12h14" /></svg>);
+   export const AddIcon = () => (<svg {...p} strokeWidth={2.4}><path d="M12 5v14M5 12h14" /></svg>);
+   export const FilterIcon = () => (<svg {...p}><path d="M4 6h16M7 12h10M10 18h4" /></svg>);
  
