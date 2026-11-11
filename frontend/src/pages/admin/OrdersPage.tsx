@@ -1,17 +1,16 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { BackIcon, DownloadIcon, InfoIcon, NextIcon, SearchIcon } from "../../components/store/auth/Icons";
-import type { Order } from "../../lib/api";
+import { BackIcon, DownloadIcon, NextIcon, SearchIcon } from "../../components/store/auth/Icons";
+import { adminOrderApi, type Order }  from "../../lib/api";
 import { fmtDate, itemCount, money, PAY_INFO, plural, shortId, statusInfo, TABS, type Tab } from "../../lib/orders";
 import AdminUser from "../../components/Admin/AdminUser";
 
 const PAGE_SIZE = 9;
 const RANGES: [string, string][] = [["7", "Last 7 days"], ["30", "Last 30 days"], ["90", "Last 90 days"], ["all", "All time"]];
 
-const BACKEND_READY = false;
-
 export default function OrdersPage() {
-  const [orders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [error, setError] = useState("");
   const [now] = useState(() => Date.now());
 
   const [tab, setTab] = useState<Tab>("all");
@@ -21,7 +20,13 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
 
-  const all = orders;
+  useEffect(() => {
+    adminOrderApi.list()
+      .then(setOrders)
+      .catch((e) => setError(e instanceof Error ? e.message : "Couldn't load orders."));
+  }, []);
+
+  const all = useMemo(() => orders ?? [], [orders]);
   const word = q.trim().toLowerCase();
 
   // Orders inside the chosen date range
@@ -40,8 +45,11 @@ export default function OrdersPage() {
         (o) =>
           (tab === "all" || statusInfo(o.status).tab === tab) &&
           (!pay || o.payment?.status === pay) &&
-          (!word || o.id.toLowerCase().includes(word) || (o.trackingId ?? "").toLowerCase().includes(word)),
-        // later: also search by customer name and email once the endpoint returns them
+          (!word ||
+            o.id.toLowerCase().includes(word) ||
+            (o.trackingId ?? "").toLowerCase().includes(word) ||
+            (o.customer?.name ?? "").toLowerCase().includes(word) ||
+            (o.customer?.email ?? "").toLowerCase().includes(word)),
       ),
     [inRange, tab, pay, word],
   );
@@ -69,7 +77,7 @@ export default function OrdersPage() {
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
     const head = ["Order ID", "Placed", "Customer", "Items", "Payment", "Status", "Tracking ID", "Total"];
     const lines = list.map((o) =>
-      [o.id, o.createdAt, "", itemCount(o), o.payment ? (PAY_INFO[o.payment.status]?.label ?? o.payment.status) : "", statusInfo(o.status).label, o.trackingId ?? "", o.orderTotal]
+      [o.id, o.createdAt, o.customer?.name ?? "", itemCount(o), o.payment ? (PAY_INFO[o.payment.status]?.label ?? o.payment.status) : "", statusInfo(o.status).label, o.trackingId ?? "", o.orderTotal]
         .map(esc).join(","));
     const blob = new Blob([[head.map(esc).join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -94,24 +102,17 @@ export default function OrdersPage() {
           <div>
             <h1>Orders</h1>
             <p className="muted">
-              {BACKEND_READY ? `${plural(inRange.length, "order")} ${rangeLabel}` : "Waiting for backend data"}
+              {orders ? `${plural(inRange.length, "order")} ${rangeLabel}` : error ? "Couldn't load orders" : "Loading…"}
             </p>
           </div>
           <div className="page-head__actions">
-            <button type="button" className="btn-ghost" onClick={exportCsv} disabled={!BACKEND_READY || all.length === 0}>
+            <button type="button" className="btn-ghost" onClick={exportCsv} disabled={all.length === 0}>
               <DownloadIcon /> {selected.length ? `Export ${selected.length}` : "Export"}
             </button>
           </div>
         </header>
 
         <section className="card panel">
-          {!BACKEND_READY && (
-            <div className="notice notice--flat">
-              <InfoIcon />
-              <p>Store-wide orders will appear here once the backend has an admin orders endpoint. The layout is ready for that data.</p>
-            </div>
-          )}
-
           <nav className="tabs">
             {TABS.map(([key, label]) => (
               <button
@@ -183,8 +184,9 @@ export default function OrdersPage() {
                         <small className="sub">{fmtDate(o.createdAt)}</small>
                       </td>
                       <td>
-                        {/* later: show the customer's name and phone or email from the admin endpoint */}
-                        —
+                        {o.customer
+                          ? <><span className="strong">{o.customer.name}</span><small className="sub">{o.customer.mobile || o.customer.email}</small></>
+                          : "—"}
                       </td>
                       <td>
                         {o.address ? <><span>{o.address.addressLine1}</span><small className="sub">{o.address.postalCode}</small></> : "—"}
@@ -204,14 +206,10 @@ export default function OrdersPage() {
                     </tr>
                   );
                 })}
-                {all.length === 0 && (
-                  <tr>
-                    <td colSpan={10}>
-                      <p className="empty">
-                        {BACKEND_READY ? "No orders yet. New orders will show up here." : "Orders will show up here once the backend endpoint is connected."}
-                      </p>
-                    </td>
-                  </tr>
+                {error && <tr><td colSpan={10}><p className="field-error">{error}</p></td></tr>}
+                {!orders && !error && <tr><td colSpan={10}><p className="empty">Loading…</p></td></tr>}
+                {orders && all.length === 0 && (
+                  <tr><td colSpan={10}><p className="empty">No orders yet. New orders will show up here.</p></td></tr>
                 )}
                 {all.length > 0 && view.length === 0 && (
                   <tr><td colSpan={10}><p className="empty">No orders match your filters.</p></td></tr>

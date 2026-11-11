@@ -41,9 +41,9 @@ export default function App() {
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
         {/* Storefront */}
+        <Route path="/" element={<HomePage />} />
         <Route element={<StoreLayout />}>
           {/* Public: anyone can browse */}
-          <Route index element={<HomePage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/:productId" element={<ProductPage />} />
 
