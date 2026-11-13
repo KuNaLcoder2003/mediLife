@@ -54,7 +54,6 @@ export default function ProductsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const { items, add } = useCart();
 
-  /** Adds one unit; false when the cart already holds all the stock. */
   const addToCart = (v: ProductView) => {
     if ((items.find((i) => i.productId === v.id)?.quantity ?? 0) >= v.quantity) return false;
     add(v.raw, 1);
@@ -71,11 +70,22 @@ export default function ProductsPage() {
   const sortParam = params.get("sort") as Sort | null;
   const sort: Sort = SORTS.some((s) => s.value === sortParam) ? (sortParam as Sort) : "relevance";
 
-  // Name search runs on the server; every other filter runs here.
-  const products = useQuery(`products:${q}`, (signal) => productApi.list(q, signal));
+  const products = useQuery("products:all", (signal) => productApi.list(undefined, signal));
   const categories = useQuery("categories", () => productApi.categories());
   const source = useMemo(() => products.data ?? products.previous ?? [], [products.data, products.previous]);
   const views = useMemo(() => source.map((p) => toView(p, categories.data ?? [])), [source, categories.data]);
+
+  const terms = useMemo(() => q.toLowerCase().split(/\s+/).filter(Boolean), [q]);
+  const searched = useMemo(
+    () =>
+      terms.length
+        ? views.filter((v) => {
+            const text = `${v.name} ${v.category} ${v.raw.productDescription ?? ""}`.toLowerCase();
+            return terms.every((t) => text.includes(t));
+          })
+        : views,
+    [views, terms],
+  );
 
   /** Changes filters and returns to page 1 (unless the patch sets the page). */
   const update = (patch: Patch) =>
@@ -95,16 +105,16 @@ export default function ProductsPage() {
 
   const categoryOptions = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const v of views) if (v.category) counts.set(v.category, (counts.get(v.category) ?? 0) + 1);
+    for (const v of searched) if (v.category) counts.set(v.category, (counts.get(v.category) ?? 0) + 1);
     for (const name of selected) if (!counts.has(name)) counts.set(name, 0);
     return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [views, selected]);
+  }, [searched, selected]);
 
   const minN = min !== "" && !Number.isNaN(Number(min)) ? Number(min) : null;
   const maxN = max !== "" && !Number.isNaN(Number(max)) ? Number(max) : null;
 
   const results = useMemo(() => {
-    const list = views.filter((v) => {
+    const list = searched.filter((v) => {
       if (selected.length && !selected.includes(v.category)) return false;
       if (minN !== null && v.finalPrice < minN) return false;
       if (maxN !== null && v.finalPrice > maxN) return false;
@@ -122,10 +132,16 @@ export default function ProductsPage() {
         return [...list].sort((a, b) => b.pct - a.pct);
       case "name":
         return [...list].sort((a, b) => a.name.localeCompare(b.name));
-      default:
-        return [...list].sort((a, b) => Number(b.quantity > 0) - Number(a.quantity > 0)); // in-stock first
+      default: {
+        // Names that start with the search first, then names containing every word, then the rest; in stock before out of stock.
+        const rank = (name: string) => {
+          const n = name.toLowerCase();
+          return !terms.length ? 0 : n.startsWith(terms[0]) ? 0 : terms.every((t) => n.includes(t)) ? 1 : 2;
+        };
+        return [...list].sort((a, b) => rank(a.name) - rank(b.name) || Number(b.quantity > 0) - Number(a.quantity > 0));
+      }
     }
-  }, [views, selected, minN, maxN, inStockOnly, disc, offersOnly, sort]);
+  }, [searched, terms, selected, minN, maxN, inStockOnly, disc, offersOnly, sort]);
 
   const pages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const page = Math.min(Math.max(1, Number(params.get("page")) || 1), pages);
@@ -148,7 +164,7 @@ export default function ProductsPage() {
 
   const clearAll = () => update({ category: null, min: null, max: null, stock: null, offer: null, disc: null });
   const related = q ? categoryOptions.map(([n]) => n).filter((n) => !selected.includes(n)).slice(0, 4) : [];
-  const topPrice = Math.ceil(Math.max(0, ...views.map((v) => v.finalPrice)) / 100) * 100 || 5000;
+  const topPrice = Math.ceil(Math.max(0, ...searched.map((v) => v.finalPrice)) / 100) * 100 || 5000;
 
   const title = q ? `Results for “${q}”` : selected.length === 1 ? selected[0] : offersOnly ? "Current offers" : "All products";
   const crumb = q ? "Search" : selected.length === 1 ? selected[0] : "Products";
@@ -296,7 +312,7 @@ export default function ProductsPage() {
               !products.error && (
                 <div className="hm-empty">
                   <h2>No products match</h2>
-                  <p>{q ? "Check the spelling or search for the start of the product name." : "Try a different category or widen the price range."}</p>
+                  <p>{q ? "Check the spelling or try fewer words." : "Try a different category or widen the price range."}</p>
                   {chips.length > 0 && <button type="button" className="hm-btn hm-btn--outline" onClick={clearAll}>Clear filters</button>}
                 </div>
               )

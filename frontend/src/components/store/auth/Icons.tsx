@@ -91,8 +91,14 @@ export const ArrowRightIcon = () => (<svg {...p}><path d="M5 12h14M13 6l6 6-6 6"
    export const AddIcon = () => (<svg {...p} strokeWidth={2.4}><path d="M12 5v14M5 12h14" /></svg>);
    export const FilterIcon = () => (<svg {...p}><path d="M4 6h16M7 12h10M10 18h4" /></svg>);
 
-   //cart icon
+   //cart icons
    export const ArrowLeftIcon = () => (<svg {...p}><path d="M19 12H5M11 6l-6 6 6 6" /></svg>);
    export const PinIcon = () => (<svg {...p}><path d="M12 21s-6-5.2-6-10a6 6 0 0112 0c0 4.8-6 10-6 10z" /><circle cx="12" cy="11" r="2.2" /></svg>);
    export const CardIcon = () => (<svg {...p}><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 10h18M7 15h3" /></svg>);
  
+   export const MobileIcon = () => (<svg {...p}><rect x="7" y="3" width="10" height="18" rx="2" /><path d="M11 18h2" /></svg>);
+   export const BankIcon = () => (<svg {...p}><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" /></svg>);
+   export const CashIcon = () => (<svg {...p}><rect x="3" y="7" width="18" height="10" rx="2" /><circle cx="12" cy="12" r="2.2" /><path d="M6.5 12h.01M17.5 12h.01" /></svg>);
+
+   export const UserIcon = () => (<svg {...p}><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0114 0" /></svg>);
+   export const LogoutIcon = () => (<svg {...p}><path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9" /></svg>);

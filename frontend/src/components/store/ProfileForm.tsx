@@ -61,7 +61,7 @@ export default function ProfileForm({ user }: { user: User }) {
 
     const error = (field: keyof Values) =>
         errors[field] ? (
-            <p className="ml-field-error" id={`profile-${field}-err`}>
+            <p className="ac-error" id={`profile-${field}-err`}>
                 {errors[field]}
             </p>
         ) : null;
@@ -99,81 +99,86 @@ export default function ProfileForm({ user }: { user: User }) {
     };
 
     return (
-        <form className="ml-panel ml-profile-form" onSubmit={onSubmit} noValidate>
-            <div className="ml-panel-head">
-                <h2>Personal details</h2>
-            </div>
+        <form className="ac-card ac-panel" onSubmit={onSubmit} noValidate aria-labelledby="profile-title">
+            <h2 id="profile-title">Personal details</h2>
+            <p className="ac-panel__sub">Used for your orders and invoices.</p>
 
-            <div className="ml-field">
-                <label htmlFor="profile-name">Full name</label>
-                <input className="ml-input" type="text" autoComplete="name" {...bind("name")} />
-                {error("name")}
-            </div>
-
-            <div className="ml-field">
-                <span className="ml-field-label">Email</span>
-                <p className="ml-readonly">{user.email}</p>
-                <p className="ml-hint">Your email is used to sign in and can't be changed here.</p>
-            </div>
-
-            <div className="ml-field-row">
-                <div className="ml-field">
-                    <label htmlFor="profile-mobile">
-                        Mobile <span className="ml-optional">(optional)</span>
-                    </label>
-                    <input className="ml-input" type="tel" autoComplete="tel" {...bind("mobile")} />
-                    {error("mobile")}
+            <div className="ac-form">
+                <div className="ac-field">
+                    <label htmlFor="profile-name">Full name</label>
+                    <input className="ac-input" type="text" autoComplete="name" {...bind("name")} />
+                    {error("name")}
                 </div>
-                <div className="ml-field">
-                    <label htmlFor="profile-country">
-                        Country <span className="ml-optional">(optional)</span>
-                    </label>
-                    <input className="ml-input" type="text" autoComplete="country-name" {...bind("country")} />
-                    {error("country")}
-                </div>
-            </div>
 
-            <div className="ml-field-row">
-                <div className="ml-field">
-                    <label htmlFor="profile-gender">
-                        Gender <span className="ml-optional">(optional)</span>
-                    </label>
-                    <select className="ml-input" {...bind("gender")}>
-                        <option value="">Prefer not to say</option>
-                        <option value="FEMALE">Female</option>
-                        <option value="MALE">Male</option>
-                    </select>
+                <div className="ac-row2">
+                    <div className="ac-field">
+                        <label htmlFor="profile-email">Email</label>
+                        <input
+                            id="profile-email"
+                            className="ac-input"
+                            type="email"
+                            value={user.email}
+                            readOnly
+                            title="Your email is used to sign in and can't be changed here."
+                        />
+                    </div>
+                    <div className="ac-field">
+                        <label htmlFor="profile-mobile">
+                            Mobile <span className="ac-optional">(optional)</span>
+                        </label>
+                        <input className="ac-input" type="tel" autoComplete="tel" {...bind("mobile")} />
+                        {error("mobile")}
+                    </div>
                 </div>
-                <div className="ml-field">
-                    <label htmlFor="profile-age">
-                        Age <span className="ml-optional">(optional)</span>
-                    </label>
-                    <input className="ml-input" type="number" inputMode="numeric" min={1} max={120} {...bind("age")} />
-                    {error("age")}
-                </div>
-            </div>
 
-            <div className="ml-form-actions ml-form-actions--split">
-                <p className={status?.kind === "error" ? "ml-field-error" : "ml-saved"} role="status" aria-live="polite">
-                    {status?.text}
-                </p>
-                <div className="ml-form-actions">
-                    {dirty && (
+                <div className="ac-row3">
+                    <div className="ac-field">
+                        <label htmlFor="profile-country">
+                            Country <span className="ac-optional">(optional)</span>
+                        </label>
+                        <input className="ac-input" type="text" autoComplete="country-name" {...bind("country")} />
+                        {error("country")}
+                    </div>
+                    <div className="ac-field">
+                        <label htmlFor="profile-age">
+                            Age <span className="ac-optional">(optional)</span>
+                        </label>
+                        <input className="ac-input" type="number" inputMode="numeric" min={1} max={120} {...bind("age")} />
+                        {error("age")}
+                    </div>
+                    <div className="ac-field">
+                        <label htmlFor="profile-gender">
+                            Gender <span className="ac-optional">(optional)</span>
+                        </label>
+                        <select className="ac-input" {...bind("gender")}>
+                            <option value="">Prefer not to say</option>
+                            <option value="FEMALE">Female</option>
+                            <option value="MALE">Male</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div className="ac-actions">
+                    <p className={`ac-status${status?.kind === "error" ? " is-error" : ""}`} role="status" aria-live="polite">
+                        {status?.text}
+                    </p>
+                    <div>
                         <button
                             type="button"
-                            className="ml-btn ml-btn--ghost"
+                            className="hm-btn hm-btn--outline"
                             onClick={() => {
                                 setValues(initial);
                                 setErrors({});
+                                setStatus(null);
                             }}
-                            disabled={saving}
+                            disabled={!dirty || saving}
                         >
-                            Discard changes
+                            Discard
                         </button>
-                    )}
-                    <button type="submit" className="ml-btn ml-btn--primary" disabled={!dirty || saving}>
-                        {saving ? "Saving…" : "Save changes"}
-                    </button>
+                        <button type="submit" className="hm-btn hm-btn--solid" disabled={!dirty || saving}>
+                            {saving ? "Saving…" : "Save changes"}
+                        </button>
+                    </div>
                 </div>
             </div>
         </form>

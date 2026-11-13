@@ -16,6 +16,7 @@ export interface Product {
   images?: ProductImage[];
   category?: { category: string } | null;
   categoryId?: string;
+  isActive?: boolean;
 }
 
 export interface Category {
@@ -144,6 +145,7 @@ export interface EditProductInput {
   discount?: number;
   reservedQuantity?: number;
   categoryId?: string;
+  isActive?: boolean;
 }
 
 /** Row returned by GET /users/allUsers. */

@@ -36,6 +36,8 @@ export default function ProductsPage() {
   const [deleteError, setDeleteError] = useState("");
   const [viewing, setViewing] = useState<string | null>(null);
   const closeDrawer = useCallback(() => setViewing(null), []);
+  const [toggling, setToggling] = useState<string[]>([]);
+  const [toggleError, setToggleError] = useState("");
 
   useEffect(() => {
     productApi.list()
@@ -104,16 +106,6 @@ export default function ProductsPage() {
     a.click();
     URL.revokeObjectURL(url);
   };
-  // const onDelete = async (p: Product) => {
-  //   if (!window.confirm(`Delete "${p.productName}"? This can't be undone.`)) return;
-  //   try {
-  //     await adminProductApi.remove(p.id);
-  //     setProducts((list) => (list ? list.filter((x) => x.id !== p.id) : list));
-  //     setSelected((s) => s.filter((id) => id !== p.id));
-  //   } catch (e) {
-  //     alert(e instanceof Error ? e.message : "Couldn't delete the product.");
-  //   }
-  // };
   const confirmDelete = async () => {
   if (!toDelete) return;
   setDeleting(true);
@@ -129,6 +121,22 @@ export default function ProductsPage() {
     setDeleting(false);
   }
 };
+
+  // Enable or disable a product
+  const toggleActive = async (p: Product) => {
+    const enable = p.isActive === false;
+    setToggleError("");
+    setToggling((t) => [...t, p.id]);
+    setProducts((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, isActive: enable } : x)));
+    try {
+      await adminProductApi.update(p.id, { isActive: enable });
+    } catch (e) {
+      setProducts((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, isActive: p.isActive } : x)));
+      setToggleError(e instanceof Error ? e.message : "Couldn't update the product.");
+    } finally {
+      setToggling((t) => t.filter((id) => id !== p.id));
+    }
+  };
 
   return (
     <>
@@ -152,6 +160,7 @@ export default function ProductsPage() {
             <Link to="/admin/products/new" className="btn-add"><PlusIcon /> Add product</Link>
           </div>
         </header>
+          {toggleError && <p className="field-error">{toggleError}</p>}
 
         <section className="card panel">
           <nav className="tabs">
@@ -194,6 +203,7 @@ export default function ProductsPage() {
               <thead>
                 <tr>
                   <th className="chk"><input type="checkbox" checked={allOnPage} onChange={togglePage} aria-label="Select all on this page" /></th>
+                  <th>ENABLED</th>
                   <th>PRODUCT</th>
                   <th>CATEGORY</th>
                   <th className="num">PRICE</th>
@@ -211,11 +221,28 @@ export default function ProductsPage() {
                   const d = p.discount ?? 0;
                   const n = p.images?.length ?? 0;
                   const img = p.images?.[0]?.imageUrl;
+                  const on = p.isActive !== false;
                   return (
-                    <tr key={p.id}>
+                    <tr key={p.id} className={on ? undefined : "row--off"}>
                       <td className="chk">
                         <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggleOne(p.id)} aria-label={`Select ${p.productName}`} />
                       </td>
+
+                      <td className="sw">
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={on}
+                          aria-label={`${on ? "Disable" : "Enable"} ${p.productName}`}
+                          title={on ? "Enabled: shown in the store. Click to disable." : "Disabled: hidden from the store. Click to enable."}
+                          className={on ? "switch switch--on" : "switch"}
+                          disabled={toggling.includes(p.id)}
+                          onClick={() => toggleActive(p)}
+                        >
+                          <span />
+                        </button>
+                      </td>
+
                       <td>
                         <div className="pcell">
                           <span className="thumb">
@@ -224,7 +251,7 @@ export default function ProductsPage() {
                           </span>
                           <div>
                             <button type="button" className="link-name" onClick={() => setViewing(p.id)} title="View details">{p.productName}</button>
-                            <small>#{p.id.slice(0, 8)} · {n ? plural(n, "image") : "No images"}</small>
+                            <small>#{p.id.slice(0, 8)} · {n ? plural(n, "image") : "No images"}{!on && " · Disabled"}</small>
                           </div>
                         </div>
                       </td>
@@ -250,9 +277,9 @@ export default function ProductsPage() {
                     </tr>
                   );
                 })}
-                {error && <tr><td colSpan={9}><p className="field-error">{error}</p></td></tr>}
-                {!products && !error && <tr><td colSpan={9}><p className="empty">Loading…</p></td></tr>}
-                {products && view.length === 0 && <tr><td colSpan={9}><p className="empty">No products match your filters.</p></td></tr>}
+                {error && <tr><td colSpan={10}><p className="field-error">{error}</p></td></tr>}
+                {!products && !error && <tr><td colSpan={10}><p className="empty">Loading…</p></td></tr>}
+                {products && view.length === 0 && <tr><td colSpan={10}><p className="empty">No products match your filters.</p></td></tr>}
               </tbody>
             </table>
           </div>

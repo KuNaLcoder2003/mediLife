@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth/auth-context";
 import { useCart, type CartItem } from "../../cart/cart-context";
-import { AlertIcon, ArrowLeftIcon, ArrowRightIcon, CardIcon, CheckIcon, LockIcon, PinIcon, ShieldIcon, TruckIcon } from "../../components/store/auth/Icons";
+import { AlertIcon, ArrowLeftIcon, ArrowRightIcon, BankIcon, CardIcon, CashIcon, CheckIcon, LockIcon, MobileIcon, PinIcon, ShieldIcon, TruckIcon } from "../../components/store/auth/Icons";
 import AddressForm from "../../components/store/AddressForm";
 import CategoryIcon from "../../components/store/CategoryIcon";
 import FullPageLoader from "../../components/store/FullPageLoader";
@@ -15,7 +15,7 @@ import { ApiError } from "../../lib/http";
 import type { Address, Product } from "../../lib/types";
 import { useRealtime } from "../../lib/realtime-context";
 
-// "Tomorrow" estimate (there is no delivery API), same as the product page.
+
 const ARRIVES = new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short" }).format(
   new Date(Date.now() + 86_400_000),
 );
@@ -26,10 +26,6 @@ interface OrderSummary {
   address: Address | undefined;
 }
 
-/**
- * idle -> placing (POST /newOrder) -> waiting (for the WebSocket) -> redirecting (to the payment page)
- * Anything that goes wrong lands back on idle with `orderError` set.
- */
 type PaymentState =
   | { kind: "idle" }
   | { kind: "placing"; summary: OrderSummary }
@@ -37,6 +33,7 @@ type PaymentState =
   | { kind: "redirecting"; summary: OrderSummary; url: string };
 
 const SLOW_AFTER_MS = 30_000;
+
 function safePaymentUrl(raw: string): string | null {
   try {
     const url = new URL(raw);
@@ -47,6 +44,17 @@ function safePaymentUrl(raw: string): string | null {
   }
   return null;
 }
+
+
+type PaymentMethod = "UPI" | "CARD" | "NETBANKING" | "COD";
+
+const METHODS: { id: PaymentMethod; title: string; hint: string; icon: ReactNode }[] = [
+  { id: "UPI", title: "UPI", hint: "Google Pay, PhonePe, Paytm or any UPI app", icon: <MobileIcon /> },
+  { id: "CARD", title: "Credit or debit card", hint: "Visa, Mastercard, RuPay", icon: <CardIcon /> },
+  { id: "NETBANKING", title: "Netbanking", hint: "All major Indian banks", icon: <BankIcon /> },
+  { id: "COD", title: "Cash on delivery", hint: "Pay in cash or UPI when it arrives", icon: <CashIcon /> },
+];
+const UPI_PATTERN = /^[\w.-]{2,}@[A-Za-z]{2,}$/;
 
 const formatAddress = (a: Address) => [a.addressLine1, a.addressLine2, a.postalCode].filter(Boolean).join(", ");
 
@@ -63,8 +71,12 @@ export default function CheckoutPage() {
   const [slow, setSlow] = useState(false);
   const [coupon, setCoupon] = useState("");
   const [couponMsg, setCouponMsg] = useState("");
+  const [method, setMethod] = useState<PaymentMethod>("UPI");
+  const [upiId, setUpiId] = useState("");
+  const [upiMsg, setUpiMsg] = useState("");
   const placing = payment.kind !== "idle";
 
+  
   const pendingRef = useRef<{ orderId?: string } | null>(null);
 
   const ids = cart.items
@@ -93,7 +105,7 @@ export default function CheckoutPage() {
   const { clear: clearCart } = cart;
   const reloadStock = stock.reload;
 
-  // Payment link / inventory notifications for the order being placed.
+  
   useEffect(
     () =>
       realtime.subscribe((message) => {
@@ -129,7 +141,6 @@ export default function CheckoutPage() {
     if (payment.kind === "redirecting") window.location.assign(payment.url);
   }, [payment]);
 
-  
   useEffect(() => {
     if (payment.kind !== "waiting") return;
     const id = window.setTimeout(() => setSlow(true), SLOW_AFTER_MS);
@@ -138,7 +149,7 @@ export default function CheckoutPage() {
 
   if (!user) return <FullPageLoader label="Loading your details…" />;
 
-  /*Waiting for/following the payment link */
+  /*  Waiting for*/
   if (payment.kind === "waiting" || payment.kind === "redirecting") {
     const { summary } = payment;
     const redirecting = payment.kind === "redirecting";
@@ -168,7 +179,7 @@ export default function CheckoutPage() {
     );
   }
 
-  /*Empty cart*/
+  /* Empty cart*/
   if (cart.items.length === 0) {
     return (
       <div className="ct-page">
@@ -198,6 +209,7 @@ export default function CheckoutPage() {
   const threshold = HOME_CONTENT.freeDeliveryAbove;
   const freeDelivery = total >= threshold;
 
+  
   const inCart = new Set(cart.items.map((i) => i.productId));
   const cartCategories = new Set(cart.items.map((i) => i.category));
   const candidates = (products.data ?? []).map((p) => toView(p, [])).filter((v) => v.quantity > 0 && !inCart.has(v.id));
@@ -211,6 +223,8 @@ export default function CheckoutPage() {
     setCouponMsg(coupon.trim() ? "Coupons aren’t available yet." : "Enter a coupon code.");
   };
 
+  const upiValid = UPI_PATTERN.test(upiId.trim());
+
   const blocker = !addressId
     ? "Add a delivery address to continue."
     : hasUnavailable
@@ -222,6 +236,8 @@ export default function CheckoutPage() {
           : realtime.status !== "ready"
             ? "Connecting to the payment service…"
             : null;
+
+  const verifyUpi = () => setUpiMsg(upiValid ? "UPI ID looks valid." : "Enter a UPI ID like name@bank.");
 
   const handleAddressSaved = async () => {
     const me = await reloadUser();
@@ -245,7 +261,7 @@ export default function CheckoutPage() {
         products: cart.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       });
       if (pendingRef.current) pendingRef.current.orderId = order.orderId;
-      
+     
       setPayment((p) =>
         p.kind === "placing" ? { kind: "waiting", summary: p.summary, orderId: order.orderId, message: order.message } : p,
       );
@@ -259,6 +275,7 @@ export default function CheckoutPage() {
     }
   };
 
+
   const step = params.get("step") === "checkout" && payable.length > 0 ? "checkout" : "cart";
   const goTo = (next: "cart" | "checkout") => {
     setParams(next === "cart" ? {} : { step: next });
@@ -266,7 +283,7 @@ export default function CheckoutPage() {
   };
   const addressNumber = addresses.findIndex((a) => a.id === addressId) + 1;
 
-  /* address + payment*/
+  /*address + payment*/
   if (step === "checkout") {
     return (
       <div className="ct-page">
@@ -285,7 +302,7 @@ export default function CheckoutPage() {
 
           <div className="ct-layout">
             <div className="ct-stack">
-              {/*Address*/}
+              {/* Address*/}
               <section className="ct-card ct-panel" aria-labelledby="address-title">
                 <header className="ct-panel__head">
                   <span className="ct-num">1</span>
@@ -328,7 +345,7 @@ export default function CheckoutPage() {
                 )}
               </section>
 
-              {/*Delivery speed*/}
+              {/* Delivery speed*/}
               <section className="ct-card ct-panel" aria-labelledby="speed-title">
                 <header className="ct-panel__head">
                   <span className="ct-num">2</span>
@@ -347,21 +364,47 @@ export default function CheckoutPage() {
                 </div>
               </section>
 
-              {/*Payment*/}
+              {/*Payment */}
               <section className="ct-card ct-panel" aria-labelledby="pay-title">
                 <header className="ct-panel__head">
                   <span className="ct-num">3</span>
                   <h2 id="pay-title">Payment method</h2>
                 </header>
-                <label className="ct-opt is-selected">
-                  <input type="radio" name="payment" checked onChange={() => undefined} />
-                  <span className="ct-opt__icon"><CardIcon /></span>
-                  <span><strong>Pay securely online</strong><small>You’ll choose how to pay on our secure payment page next.</small></span>
-                </label>
+                <div className="ct-paylist" role="radiogroup" aria-labelledby="pay-title">
+                  {METHODS.map((m) => {
+                    const selected = method === m.id;
+                    return (
+                      <div key={m.id} className={`ct-opt ct-opt--pay${selected ? " is-selected" : ""}`}>
+                        <label className="ct-opt__main">
+                          <input type="radio" name="payment" value={m.id} checked={selected} onChange={() => setMethod(m.id)} disabled={placing} />
+                          <span className="ct-opt__icon">{m.icon}</span>
+                          <span><strong>{m.title}</strong><small>{m.hint}</small></span>
+                        </label>
+                        {selected && m.id === "UPI" && (
+                          <div className="ct-upi">
+                            <input
+                              className="pp-input"
+                              value={upiId}
+                              onChange={(e) => { setUpiId(e.target.value); setUpiMsg(""); }}
+                              placeholder="yourname@bank"
+                              autoComplete="off"
+                              aria-label="UPI ID"
+                              aria-invalid={upiMsg && !upiValid ? true : undefined}
+                              disabled={placing}
+                            />
+                            <button type="button" className="hm-btn hm-btn--outline" onClick={verifyUpi} disabled={placing}>Verify</button>
+                            {upiMsg && <p className={`ct-upi__msg${upiValid ? " is-ok" : ""}`} role="status">{upiMsg}</p>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="ct-paynote">You’ll complete the payment on our secure payment page.</p>
               </section>
             </div>
 
-            {/*summary*/}
+            {/* Summary*/}
             <aside aria-label="Order summary">
               <div className="ct-card ct-summary">
                 <h2>Order summary</h2>
