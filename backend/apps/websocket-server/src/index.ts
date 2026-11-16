@@ -162,6 +162,17 @@ await subscriber.subscribe("WEBSOCKET_NOTIFY", (message: string) => {
                 details: event.payload.data,
             })
             break
+        // The checkout page shows the `message` of INVENTORY_UNAVAILABLE and stops waiting,
+        // so these failures reuse that shape instead of needing a new message type in the frontend.
+        case "PAYMENT_LINK_ERROR":
+        case "STOCK_FAILURE":
+            delivered = notifyUser(userId, {
+                type: "INVENTORY_UNAVAILABLE",
+                orderId: event.aggregateId,
+                message: event.payload.message,
+                details: event.payload.data,
+            })
+            break
         default:
             return
     }

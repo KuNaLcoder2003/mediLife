@@ -7,6 +7,9 @@ dotenv.config()
 
 const STRIPE_SECRET = `${process.env.STRIPE_SECRET_KEY}`
 const stripe = new Stripe(STRIPE_SECRET)
+const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173"
+// Stripe needs at least 30 minutes; Payments.expiresAt uses the same time
+const CHECKOUT_TTL_MS = 31 * 60 * 1000
 
 
 const redisClient = await getRedisClient()
@@ -14,7 +17,7 @@ const duplicate = redisClient.duplicate()
 duplicate.on('error', (err) => console.error('Redis duplicate error', err))
 await duplicate.connect()
 
-const getProducts = async (items: { productId: string, quantity: number }[]) => {
+const getProducts = async (orderId: string, items: { productId: string, quantity: number }[]) => {
     const ids = items.map(item => item.productId)
     const products = await prisma.products.findMany({
         where: {
@@ -35,23 +38,29 @@ const getProducts = async (items: { productId: string, quantity: number }[]) => 
             price: true,
         },
     })
-
-    let mergedArr = products.map((product, index) => {
-        return {
-            ...product,
-            quantity: items[index]!.quantity
-        }
+    // charge the price the customer saw when ordering (saved with the order lines)
+    const orderLines = await prisma.orderdProducts.findMany({
+        where: { orderId: orderId },
+        select: { productId: true, priceAtPurchase: true }
     })
+    const priceAtPurchase = new Map(orderLines.map(line => [line.productId, line.priceAtPurchase]))
 
-    let result = mergedArr.map(item => {
+    // match by id: findMany does not return rows in the order of `ids`
+    let result = items.map(item => {
+        const product = products.find(p => p.id === item.productId)
+        if (!product) {
+            throw new Error(`Product ${item.productId} not found`)
+        }
+        const unitPrice = priceAtPurchase.get(item.productId) || product.price * (1 - (product.discount ?? 0) / 100)
         return {
             price_data: {
                 currency: "usd",
                 product_data: {
-                    name: item.productName,
-                    description: item.productDescription,
+                    name: product.productName,
+                    description: product.productDescription,
                 },
-                unit_amount: item.price * (1 - (item.discount ?? 0) / 100) * 100,
+                // Stripe only accepts whole cents
+                unit_amount: Math.round(unitPrice * 100),
             },
             quantity: item.quantity,
         }
@@ -66,12 +75,19 @@ redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
     const { payload } = JSON.parse(mesage) as EventPayload
     try {
         console.log('Subscribed data in Payment Service is : ', payload)
-        const items = await getProducts(payload.products)
+        // a repeated event must not create a second checkout
+        const existing = await prisma.payments.findUnique({ where: { orderId: payload.orderId }, select: { id: true } })
+        if (existing) {
+            console.log(`[payment] payment already exists for order ${payload.orderId}, skipping`)
+            return
+        }
+        const items = await getProducts(payload.orderId, payload.products)
         const url = await stripe.checkout.sessions.create({
             mode: "payment",
             line_items: items.line_items,
-            success_url: 'http://localhost:5173/success?orderId=' + payload.orderId,
-            cancel_url: 'http://localhost:5173/fail',
+            success_url: `${FRONTEND_URL}/success?orderId=` + payload.orderId,
+            cancel_url: `${FRONTEND_URL}/fail`,
+            expires_at: Math.floor((Date.now() + CHECKOUT_TTL_MS) / 1000),
             metadata: {
                 orderId: payload.orderId,
                 userId: payload.userId,
@@ -84,7 +100,7 @@ redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
                 const result = await tx.payments.create({
                     data: {
                         orderId: payload.orderId,
-                        expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+                        expiresAt: new Date(Date.now() + CHECKOUT_TTL_MS),
                         status: "PENDING",
                         stripeID: url.id
                     }
@@ -106,17 +122,36 @@ redisClient.subscribe("INVENTORY_RESERVED", async (mesage) => {
         }
     } catch (error) {
         console.log(error)
-        await prisma.events.create({
-            data: {
-                eventType: "PAYMENT_LINK_ERROR",
-                aggregateId: payload.orderId,
-                aggregateType: "PAYMENTS",
-                payload: payload,
-                status: "PENDING",
-                lastError: error instanceof Error ? error.message : "",
-                attempts: 0
+        // no payment link: close the order, free its stock and tell the user (instead of leaving checkout waiting)
+        await prisma.$transaction(async (tx) => {
+            const cancelled = await tx.order.updateMany({
+                where: { id: payload.orderId, status: "CREATED" },
+                data: { status: "CANCELLED" }
+            })
+            if (cancelled.count === 1) {
+                await tx.events.create({
+                    data: {
+                        eventType: "INVENTORY_UPDATE",
+                        aggregateId: payload.orderId,
+                        aggregateType: "INVENTORY",
+                        payload: { eventType: "RELEASE_RESERVATION", orderId: payload.orderId, userId: payload.userId, products: payload.products },
+                        status: "PENDING",
+                        attempts: 0
+                    }
+                })
             }
-        })
+            await tx.events.create({
+                data: {
+                    eventType: "PAYMENT_LINK_ERROR",
+                    aggregateId: payload.orderId,
+                    aggregateType: "PAYMENTS",
+                    payload: { ...payload, message: "We couldn't start the payment for your order. Please try again." },
+                    status: "PENDING",
+                    lastError: error instanceof Error ? error.message : "",
+                    attempts: 0
+                }
+            })
+        }, { maxWait: 5000, timeout: 10000 }).catch((err) => console.log('[payment] could not record payment link error', err))
     }
 })
 
@@ -138,17 +173,41 @@ duplicate.subscribe("INITIATE_REFUND", async (message) => {
         const payment = await prisma.payments.findUnique({
             where: {
                 orderId: orderId,
-                status: "COMPLETED"
             },
             select: {
                 stripeID: true,
                 id: true,
+                status: true,
             }
         })
         console.log(payment)
         if (!payment) {
             return
         }
+
+        // not paid yet: close the checkout so it can't be paid any more
+        if (payment.status === "PENDING") {
+            try {
+                await stripe.checkout.sessions.expire(payment.stripeID)
+                await prisma.payments.updateMany({ where: { id: payment.id, status: "PENDING" }, data: { status: "CANCELLED" } })
+                return
+            } catch (error) {
+                // expire fails when the session is already complete: check whether the customer paid
+                const session = await stripe.checkout.sessions.retrieve(payment.stripeID)
+                if (session.payment_status !== "paid") {
+                    await prisma.payments.updateMany({ where: { id: payment.id, status: "PENDING" }, data: { status: "CANCELLED" } })
+                    return
+                }
+                // paid just before the cancel: mark it and refund below
+                await prisma.payments.updateMany({ where: { id: payment.id, status: "PENDING" }, data: { status: "COMPLETED" } })
+                payment.status = "COMPLETED"
+            }
+        }
+        if (payment.status !== "COMPLETED") {
+            // already refunded / cancelled / failed
+            return
+        }
+
         const session = await stripe.checkout.sessions.retrieve(
             payment.stripeID
         );
@@ -157,26 +216,45 @@ duplicate.subscribe("INITIATE_REFUND", async (message) => {
             throw new Error("No PaymentIntent found for this Checkout Session");
         }
 
-        const refund = await stripe.refunds.create({
-            payment_intent: session.payment_intent as string,
-            metadata: {
-                orderId,
-                userId,
-                products: JSON.stringify(products)
-            }
-        });
+        let refund: Stripe.Refund
+        try {
+            refund = await stripe.refunds.create({
+                payment_intent: session.payment_intent as string,
+                metadata: {
+                    orderId,
+                    userId,
+                    products: JSON.stringify(products)
+                }
+            }, { idempotencyKey: `refund_${orderId}` });
+        } catch (error) {
+            console.log(error)
+            // mail to user that the refund could not be started (template for an empty refundId)
+            await prisma.events.create({
+                data: {
+                    eventType: "MAIL_USER",
+                    aggregateId: orderId,
+                    aggregateType: "PAYMENTS",
+                    payload: { refundId: "", orderId: orderId, userId: userId, eventType: "REFUND_MAIL", userEmail: user?.email ?? "" },
+                    status: "CREATED",
+                    attempts: 0
+                }
+            })
+            return
+        }
         console.log('Stripe : ', refund!)
 
 
         await prisma.$transaction(async (tx) => {
-            await tx.payments.update({
+            const updated = await tx.payments.updateMany({
                 where: {
-                    id: payment.id
+                    id: payment.id,
+                    status: "COMPLETED"
                 },
                 data: {
-                    status: "CANCELLED" // => REFUND_INITIATED
+                    status: "REFUND_INITIATED"
                 }
             })
+            if (updated.count === 0) return
             await tx.events.create({
                 data: {
                     eventType: "MAIL_USER",
@@ -187,21 +265,13 @@ duplicate.subscribe("INITIATE_REFUND", async (message) => {
                         orderId: orderId,
                         userId: userId,
                         eventType: "REFUND_MAIL",
-                        userEmail: user?.email
+                        userEmail: user?.email ?? ""
                     },
                     status: "CREATED",
                     attempts: 0
                 }
             })
         })
-
-        // if (!refund) {
-        //     // mail to user about that refund could not be generated , please try again or contact support@medilinks.com
-
-
-        // } else {
-        //     // mail to user about that refund generated , and provide refund id , for any furthur queries , please contact support@medilinks.com
-        // }
 
     } catch (error) {
         console.log(error)

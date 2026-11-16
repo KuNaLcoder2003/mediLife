@@ -2,6 +2,9 @@ import { prisma } from "@repo/db";
 import { getRedisClient } from "@repo/redis";
 const redisClient = await getRedisClient()
 
+// after this many failed publishes an event is parked as FAILED instead of being retried forever
+const MAX_ATTEMPTS = 5
+
 export type Event = {
     id: string,
     eventType: string,
@@ -18,7 +21,8 @@ export type Event = {
 export const getOutboxevents = async () => {
     const events = await prisma.events.findMany({
         where: {
-            OR: [{ status: "CREATED" }, { status: "PENDING" }]
+            OR: [{ status: "CREATED" }, { status: "PENDING" }],
+            attempts: { lt: MAX_ATTEMPTS }
         },
         take: 50,
         orderBy: {
@@ -106,6 +110,16 @@ export const processEvents = async (event: Event) => {
                 }))
                 break;
 
+            case "PAYMENT_FAILED":
+                await redisClient.publish("WEBSOCKET_NOTIFY", JSON.stringify({
+                    eventType,
+                    eventId: id,
+                    payload: payload,
+                    aggregateId,
+                    aggregateType
+                }))
+                break;
+
             case "PAYMENT_LINK_ERROR":
                 await redisClient.publish("WEBSOCKET_NOTIFY", JSON.stringify({
                     eventType,
@@ -171,7 +185,8 @@ export const processEvents = async (event: Event) => {
                 lastError: error instanceof Error ? error.message : String(error),
                 attempts: {
                     increment: 1
-                }
+                },
+                ...(event.attempts + 1 >= MAX_ATTEMPTS ? { status: "FAILED" } : {})
             }
         })
 

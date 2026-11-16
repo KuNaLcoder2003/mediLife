@@ -19,12 +19,24 @@ console.log('Connected to redis')
 
 async function pickOrders() {
     const objectFromQueue = await redisClient.brPop('ORDER_CREATED', 0)
-    console.log('Object Recieved in Order Service : ', JSON.parse(objectFromQueue!.element))
     if (!objectFromQueue) {
         return
     }
-    const order = JSON.parse(objectFromQueue.element) as OutboxOrderEvent
+    let order: OutboxOrderEvent
+    try {
+        order = JSON.parse(objectFromQueue.element) as OutboxOrderEvent
+    } catch {
+        console.log('Ignoring malformed order message: ', objectFromQueue.element)
+        return
+    }
+    console.log('Object Recieved in Order Service : ', order)
     const result = await checkAvailabilityAndReserve(order.payload.products, order.payload.orderId, order.payload.userId, order.payload.orderTotal)
+
+    if (typeof result === "object" && result?.event === "DATABASE_CONNECTION_ERROR") {
+        // don't lose the order: wait, then put it back at the front of the queue (brPop takes from the right)
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+        await redisClient.rPush('ORDER_CREATED', objectFromQueue.element)
+    }
 
     // switch (result.event) {
     //     case "INVENTORY_RESERVED":

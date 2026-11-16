@@ -1,8 +1,8 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv"
 import { getRedisClient } from "@repo/redis";
-const redisClient = await getRedisClient()
 dotenv.config()
+const redisClient = await getRedisClient()
 type mailId = string
 type Attachment = {
   fileName: string,
@@ -271,18 +271,27 @@ const mail = async (emailIds: mailId[], subject: string, html: string, attachmen
 
 
 redisClient.subscribe("MAIL_USER", async (message) => {
-  const data = JSON.parse(message) as EventPayload
-  const { payload } = data
-  console.log(payload)
-  switch (payload.eventType) {
-    case "REFUND_MAIL":
-      await mail([payload.userEmail], `${payload.refundId ? `Refund Initiated against order ${payload.orderId}` : `Unable to Initiate refund against order ${payload.orderId}`}`, payload.refundId ? refundInitiatedHtml(payload.orderId, payload.refundId) : refundNotInitiatedHtml(payload.orderId))
-      break;
-    case "CONFIRM_REFUND_MAIL":
-      await mail([payload.userEmail], `Refund processed againts order ${payload.orderId}`, refundConfirmedHtml(payload.orderId, payload.refundId, payload.amount!))
-      break
-    case "ORDER_CONFIRM_MAIL":
-      await mail(["kunalindia59@gmail.com"], `Order Confirmed ${payload.orderId}`, confirmOrderEmail(payload.orderId))
-      break;
+  try {
+    const data = JSON.parse(message) as EventPayload
+    const { payload } = data
+    console.log(payload)
+    if (!payload?.userEmail) {
+      console.log(`[mail] no recipient for ${payload?.eventType} (order ${payload?.orderId}), skipping`)
+      return
+    }
+    switch (payload.eventType) {
+      case "REFUND_MAIL":
+        await mail([payload.userEmail], `${payload.refundId ? `Refund Initiated against order ${payload.orderId}` : `Unable to Initiate refund against order ${payload.orderId}`}`, payload.refundId ? refundInitiatedHtml(payload.orderId, payload.refundId) : refundNotInitiatedHtml(payload.orderId))
+        break;
+      case "CONFIRM_REFUND_MAIL":
+        await mail([payload.userEmail], `Refund processed againts order ${payload.orderId}`, refundConfirmedHtml(payload.orderId, payload.refundId, payload.amount!))
+        break
+      case "ORDER_CONFIRM_MAIL":
+        await mail([payload.userEmail], `Order Confirmed ${payload.orderId}`, confirmOrderEmail(payload.orderId))
+        break;
+    }
+  } catch (error) {
+    // a failed send must not crash the service
+    console.log('[mail] failed to send', error)
   }
 })

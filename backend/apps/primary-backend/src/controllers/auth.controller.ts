@@ -14,7 +14,7 @@ export const refreshHandler = async (req: express.Request, res: express.Response
         }
         const tokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex")
         const session = await prisma.session.findUnique({
-            where: { tokenHash, expiresAt: { gte: new Date() } },
+            where: { tokenHash, expiresAt: { gte: new Date() }, revokedAt: null },
             select: { id: true, user: { select: { id: true, email: true, role: true } } },
         })
         if (!session) {

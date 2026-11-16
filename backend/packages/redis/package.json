@@ -2,6 +2,9 @@
     "name": "@repo/redis",
     "version": "1.0.0",
     "type": "module",
+    "scripts": {
+        "build": "tsc -p ."
+    },
     "dependencies": {
         "@types/redis": "^4.0.10",
         "redis": "^6.2.1"

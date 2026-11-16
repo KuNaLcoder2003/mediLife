@@ -1,10 +1,14 @@
 import { prisma } from "@repo/db"
 import type { OrderPayLoad } from "../types/index.js"
 
-export const createOrder = async (orderDetails: OrderPayLoad, eventPayload: object) => {
+export const createOrder = async (orderDetails: OrderPayLoad, eventPayload: object, items: { productId: string, quantity: number, priceAtPurchase: number }[]) => {
     const newOrder = await prisma.$transaction(async (tx) => {
         const order = await tx.order.create({
             data: orderDetails
+        })
+        // items are stored with the order, so cancel/payment always know the real quantities and prices
+        await tx.orderdProducts.createMany({
+            data: items.map((item) => ({ orderId: order.id, ...item }))
         })
         await tx.events.create({
             data: {
@@ -47,6 +51,8 @@ export const getUserOrder = async (userId: string) => {
                 status: true,
                 orderedProducts: {
                     select: {
+                        quantity: true,
+                        priceAtPurchase: true,
                         product: {
                             select: {
                                 id: true,
@@ -82,8 +88,11 @@ export const getOrderById = async (orderId: string) => {
             createdAt: true,
             trackingId: true,
             address: true,
+            status: true,
             orderedProducts: {
                 select: {
+                    quantity: true,
+                    priceAtPurchase: true,
                     product: {
                         select: {
                             id: true,

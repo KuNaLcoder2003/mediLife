@@ -6,11 +6,15 @@ import { createOrder, getOrderById, getUserOrder } from "../helpers/orders.js"
 import { prisma } from "@repo/db"
 const redisClient = await getRedisClient()
 
-export const newOrder = async (req: express.Request, res: express.Response) => {
+const CANCELLABLE_STATUSES: ("CREATED" | "CONFIRMED" | "PACKING")[] = ["CREATED", "CONFIRMED", "PACKING"]
+
+export const newOrder = async (req: any, res: express.Response) => {
     try {
-        const userId = req.body.userId
-        const incomingObject = req.body.orderDetails as NewOrderPayload
-        if (!incomingObject) {
+        // always the logged-in user from the token, never from the body
+        const userId = req.id as string
+        const incomingObject = req.body?.orderDetails as NewOrderPayload
+        if (!incomingObject || !Array.isArray(incomingObject.products) || incomingObject.products.length === 0
+            || typeof incomingObject.addressId !== "string" || !incomingObject.addressId) {
             res.status(400).json({
                 message: 'Bad request, order details not recieved',
                 valid: false
@@ -18,24 +22,56 @@ export const newOrder = async (req: express.Request, res: express.Response) => {
             return
         }
 
-        const results = await Promise.allSettled(incomingObject.products.map(async (product) => {
+        // quantities must be positive whole numbers; the same product twice is merged into one line
+        const merged = new Map<string, number>()
+        for (const item of incomingObject.products) {
+            if (typeof item?.productId !== "string" || !item.productId || !Number.isInteger(item.quantity) || item.quantity <= 0) {
+                res.status(400).json({
+                    message: "Bad request, invalid product or quantity",
+                    valid: false
+                })
+                return
+            }
+            merged.set(item.productId, (merged.get(item.productId) ?? 0) + item.quantity)
+        }
+        const products = [...merged].map(([productId, quantity]) => ({ productId, quantity }))
+
+        // the delivery address must belong to this user
+        const address = await prisma.address.findFirst({
+            where: { id: incomingObject.addressId, userId: userId },
+            select: { id: true }
+        })
+        if (!address) {
+            res.status(400).json({
+                message: "Please select a valid delivery address",
+                valid: false
+            })
+            return
+        }
+
+        const results = await Promise.allSettled(products.map(async (product) => {
             const p = getProductById(product.productId)
             return p
         }))
 
         let notAvailable: string[] = []
         let total = 0;
+        const items: { productId: string, quantity: number, priceAtPurchase: number }[] = []
         results.map((res, index) => {
-
-            if (res.status == "rejected") {
-                notAvailable.push(incomingObject.products[index]?.productId!)
-            } else if (res.value?.quantity == 0) {
-                notAvailable.push(incomingObject.products[index]?.productId!)
+            const item = products[index]!
+            // missing, disabled, or not enough free (unreserved) stock
+            if (res.status == "rejected" || !res.value || res.value.disabled
+                || res.value.quantity - res.value.reservedQuantity < item.quantity) {
+                notAvailable.push(item.productId)
             }
-            else if (res.status == "fulfilled") {
-                total += res.value?.price! * incomingObject.products[index]?.quantity!
+            else {
+                // same price Stripe charges: discount is a percentage
+                const unitPrice = Math.round(res.value.price * (1 - (res.value.discount ?? 0) / 100) * 100) / 100
+                items.push({ ...item, priceAtPurchase: unitPrice })
+                total += unitPrice * item.quantity
             }
         })
+        total = Math.round(total * 100) / 100
 
         if (notAvailable.length > 0) {
             res.status(402).json({
@@ -45,7 +81,8 @@ export const newOrder = async (req: express.Request, res: express.Response) => {
             return
         }
         const enrichedOrderObject: Order = {
-            ...incomingObject,
+            products: products,
+            addressId: incomingObject.addressId,
             userId: userId,
             trackingId: "",
             status: "CREATED",
@@ -63,7 +100,7 @@ export const newOrder = async (req: express.Request, res: express.Response) => {
             status: "CREATED",
             orderTotal: total,
             addressId: incomingObject.addressId
-        }, enrichedOrderObject)
+        }, enrichedOrderObject, items)
 
         if (!newOrder) {
             res.status(402).json({
@@ -82,7 +119,7 @@ export const newOrder = async (req: express.Request, res: express.Response) => {
         console.log(error)
         res.status(500).json({
             message: "Something went wrong",
-            vaalid: false
+            valid: false
         })
     }
 }
@@ -148,35 +185,58 @@ export const getOrderByIdController = async (req: any, res: express.Response) =>
 export const cancelOrderHandler = async (req: any, res: express.Response) => {
     try {
         const userId = req.id
-        const orderId = req.body.orderId
-        const products = req.body.products as { productId: string, quantity: number }[]
-        if (!orderId) {
+        const orderId = req.body?.orderId
+        if (!orderId || typeof orderId !== "string") {
             res.status(400).json({
                 message: "Bad Request",
                 valid: false
             })
             return
         }
-        const orderdProducts = (await prisma.orderdProducts.findMany({
+        const existing = await prisma.order.findFirst({
+            where: { id: orderId, userId: userId },
+            select: { status: true }
+        })
+        if (!existing) {
+            res.status(404).json({
+                message: "No orders found",
+                valid: false
+            })
+            return
+        }
+        // only before shipping (frontend2 lib/Order.ts CANCELLABLE_STATUSES must match)
+        if (!(CANCELLABLE_STATUSES as string[]).includes(existing.status)) {
+            res.status(400).json({
+                message: "This order can no longer be cancelled",
+                valid: false
+            })
+            return
+        }
+        // real quantities, saved when the order was placed
+        const orderdProducts = await prisma.orderdProducts.findMany({
             where: {
                 orderId: orderId
             },
             select: {
-                productId: true
+                productId: true,
+                quantity: true
             }
-        })).map(item => {
-            return { ...item, quantity: 3 }
         })
         const result = await prisma.$transaction(async (tx) => {
-            const order = await tx.order.update({
+            // conditional update: a second cancel (or a status change in between) does nothing
+            const updated = await tx.order.updateMany({
                 where: {
                     id: orderId,
                     userId: userId,
+                    status: { in: CANCELLABLE_STATUSES }
                 },
                 data: {
                     status: "CANCELLED"
                 }
             })
+            if (updated.count === 0) {
+                return { order: null }
+            }
             await tx.events.create({
                 data: {
                     aggregateType: "ORDER",
@@ -193,7 +253,7 @@ export const cancelOrderHandler = async (req: any, res: express.Response) => {
                     attempts: 0
                 }
             })
-            return { order }
+            return { order: updated }
         }, { maxWait: 5000, timeout: 10000 })
         if (!result.order) {
             res.status(403).json({
@@ -228,6 +288,8 @@ export const getAllOrdersAdmin = async (req: express.Request, res: express.Respo
                 status: true,
                 orderedProducts: {
                     select: {
+                        quantity: true,
+                        priceAtPurchase: true,
                         product: {
                             select: {
                                 id: true,
@@ -248,7 +310,7 @@ export const getAllOrdersAdmin = async (req: express.Request, res: express.Respo
             return
         }
         res.status(200).json({
-            valid: false,
+            valid: true,
             orders
         })
     } catch (error) {

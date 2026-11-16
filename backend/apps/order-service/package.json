@@ -4,6 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "tsc -p .",
+    "start:worker": "node dist/index.js",
+    "start:subscriber": "node dist/subscriber/subscriber.js",
+    "dev": "tsc -p . && (node dist/index.js & node dist/subscriber/subscriber.js & wait)",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

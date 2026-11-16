@@ -3,6 +3,7 @@ import { prisma } from "@repo/db"
 import type { UserDetails } from "../types/index.js"
 import { createUser, generateToken, getUserAuth } from "../helpers/users.js"
 import crypto from "crypto"
+import { cookieOptions } from "../helpers/cookie.js"
 
 type address = {
     postalCode: string,
@@ -50,14 +51,35 @@ export const getUserDetails = async (req: any, res: express.Response) => {
 
 export const signUp = async (req: express.Request, res: express.Response) => {
     try {
-        const userDetails = req.body.userDetails as UserDetails
-        if (!userDetails) {
+        const body = req.body?.userDetails
+        if (!body || typeof body !== "object") {
             res.status(400).json({
                 message: "Bad request",
                 valid: false
             })
             return
         }
+        const { name, email, password, gender, age, mobile, country } = body
+        if (typeof name !== "string" || !name.trim() || typeof email !== "string" || !email.trim()
+            || typeof password !== "string" || !password) {
+            res.status(400).json({
+                message: "Name, email and password are required",
+                valid: false
+            })
+            return
+        }
+        // Whitelist: role and authMode are decided by the server, never by the client
+        const userDetails = {
+            name: name.trim(),
+            email: email.trim(),
+            password,
+            country: typeof country === "string" ? country.trim() : "",
+            role: "USER",
+            authMode: "CREDENTIALS",
+            ...(gender === "MALE" || gender === "FEMALE" ? { gender } : {}),
+            ...(Number.isInteger(age) && age > 0 && age <= 120 ? { age } : {}),
+            ...(typeof mobile === "string" && mobile.trim() ? { mobile: mobile.trim() } : {}),
+        } as UserDetails
         const userExists = await prisma.users.findFirst({
             where: {
                 email: userDetails.email
@@ -100,12 +122,7 @@ export const signUp = async (req: express.Request, res: express.Response) => {
             return
         }
         const accessToken = generateToken(newUser.id, newUser.email, newUser.role)
-        res.cookie("refreshToken", `${refreshToken}`, {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'lax',
-            maxAge: 25 * 24 * 60 * 60 * 1000
-        })
+        res.cookie("refreshToken", `${refreshToken}`, cookieOptions(25 * 24 * 60 * 60 * 1000))
         res.status(200).json({
             message: "Account created Succesfully",
             valid: true,
@@ -160,12 +177,7 @@ export const signIn = async (req: express.Request, res: express.Response) => {
         }
 
         const accessToken = generateToken(user.user.id, user.user.email, user.user.role)
-        res.cookie("refreshToken", `${refreshToken}`, {
-            httpOnly: true,
-            sameSite: "lax",
-            secure: true,
-            maxAge: 25 * 24 * 60 * 60 * 1000
-        })
+        res.cookie("refreshToken", `${refreshToken}`, cookieOptions(25 * 24 * 60 * 60 * 1000))
         res.status(200).json({
             message: "Signed In!",
             valid: true,
@@ -183,13 +195,23 @@ export const signIn = async (req: express.Request, res: express.Response) => {
 export const addAddressHandler = async (req: any, res: express.Response) => {
     try {
         const userId = req.id;
-        const address = req.body as address
+        const { postalCode, addressLine1, addressLine2 } = (req.body ?? {}) as address
+        if (typeof postalCode !== "string" || !postalCode.trim() || typeof addressLine1 !== "string" || !addressLine1.trim()) {
+            res.status(400).json({
+                message: "Postal code and address line 1 are required",
+                valid: false
+            })
+            return
+        }
 
         const newAddress = await prisma.$transaction(async (tx) => {
             const addr = await tx.address.create({
                 data: {
+                    // whitelist: the body must not be able to set userId or id
                     userId: userId,
-                    ...address
+                    postalCode: postalCode.trim(),
+                    addressLine1: addressLine1.trim(),
+                    addressLine2: typeof addressLine2 === "string" ? addressLine2.trim() : ""
                 }
             })
             return addr

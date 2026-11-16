@@ -19,10 +19,12 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
         switch (subscribedData.payload.eventType) {
             case "PAYMENT_CONFIRMED":
                 await prisma.$transaction(async (tx) => {
+                    // only a placed order moves to CONFIRMED (a repeated webhook or a cancelled order does nothing)
                     const res = await tx.order.updateMany(
                         {
                             where: {
-                                id: subscribedData.payload.orderId
+                                id: subscribedData.payload.orderId,
+                                status: "CREATED"
                             },
                             data: {
                                 status: "CONFIRMED"
@@ -30,7 +32,6 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                         }
                     )
                     if (res.count == 1) {
-                        console.log('HERE')
                         await tx.events.create({
                             data: {
                                 aggregateId: subscribedData.payload.orderId,
@@ -41,13 +42,34 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                                 payload: { orderId: subscribedData.payload.orderId, userId: subscribedData.payload.userId, products: subscribedData.payload.products, eventType: "MOVE_INVENTORY" }
                             }
                         })
+                        return
                     }
-
+                    // paid, but the order was cancelled meanwhile: give the money back
+                    const order = await tx.order.findUnique({
+                        where: { id: subscribedData.payload.orderId },
+                        select: { status: true }
+                    })
+                    if (order?.status === "CANCELLED") {
+                        await tx.events.create({
+                            data: {
+                                eventType: "INITIATE_REFUND",
+                                aggregateId: subscribedData.payload.orderId,
+                                aggregateType: "PAYMENTS",
+                                payload: {
+                                    orderId: subscribedData.payload.orderId,
+                                    userId: subscribedData.payload.userId,
+                                    products: subscribedData.payload.products,
+                                },
+                                status: "CREATED",
+                                attempts: 0
+                            }
+                        })
+                    }
                 }, { maxWait: 5000, timeout: 10000 })
                 break;
             case "CREATE_TRACKING":
                 await prisma.$transaction(async (tx) => {
-                    await tx.order.update({
+                    const res = await tx.order.updateMany({
                         where: {
                             id: subscribedData.payload.orderId,
                             status: "CONFIRMED"
@@ -55,6 +77,13 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                         data: {
                             status: "PACKING"
                         }
+                    })
+                    if (res.count === 0) {
+                        return
+                    }
+                    const user = await tx.users.findUnique({
+                        where: { id: subscribedData.payload.userId },
+                        select: { email: true }
                     })
                     await tx.events.create({
                         data: {
@@ -64,7 +93,7 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                                 userId: subscribedData.payload.userId,
                                 products: subscribedData.payload.products,
                                 eventType: "ORDER_CONFIRM_MAIL",
-                                userEmail: ""
+                                userEmail: user?.email ?? ""
                             },
                             aggregateId: subscribedData.payload.orderId,
                             aggregateType: "ORDER_MAIL",
@@ -72,7 +101,7 @@ await duplicte.subscribe('UPDATE_ORDER', async (message) => {
                             status: "CREATED"
                         }
                     })
-                })
+                }, { maxWait: 5000, timeout: 10000 })
                 break;
         }
     } catch (error) {

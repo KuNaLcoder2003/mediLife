@@ -55,15 +55,22 @@ export const getUserAuth = async (email: string, password: string) => {
         }
     }
 
-    if (user.authMode == "CREDENTIALS") {
-        const matched = await bcrypt.compare(password, user.password as string)
-        if (!matched) {
-            return {
-                valid: false,
-                reason: "Invalid password",
-                status: 401,
-                user: null
-            }
+    // Google accounts have no password, so they must never pass a password login
+    if (user.authMode !== "CREDENTIALS" || !user.password || typeof password !== "string") {
+        return {
+            valid: false,
+            reason: "Invalid password",
+            status: 401,
+            user: null
+        }
+    }
+    const matched = await bcrypt.compare(password, user.password)
+    if (!matched) {
+        return {
+            valid: false,
+            reason: "Invalid password",
+            status: 401,
+            user: null
         }
     }
     return {

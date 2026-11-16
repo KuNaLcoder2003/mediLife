@@ -31,9 +31,29 @@ export const addProductHandler = async (req: express.Request, res: express.Respo
             })
             return
         }
+        const { productName, productDescription, price, quantity, discount, reservedQuantity, categoryId } = productDetails
+        const isNum = (v: unknown, int = false) => typeof v === "number" && Number.isFinite(v) && v >= 0 && (!int || Number.isInteger(v))
+        if (typeof productName !== "string" || !productName.trim() || typeof productDescription !== "string"
+            || !isNum(price) || !isNum(quantity, true) || (discount !== undefined && (!isNum(discount) || discount > 100))
+            || (reservedQuantity !== undefined && (!isNum(reservedQuantity, true) || reservedQuantity > quantity))) {
+            res.status(400).json({
+                message: "Please provide valid product details",
+                valid: false
+            })
+            return
+        }
         const newProduct = await prisma.$transaction(async (tx) => {
             const res = await tx.products.create({
-                data: productDetails
+                // whitelist: never pass req.body straight in (id, disabled, ...)
+                data: {
+                    productName: productName.trim(),
+                    productDescription,
+                    price,
+                    quantity,
+                    discount: discount ?? 0,
+                    reservedQuantity: reservedQuantity ?? 0,
+                    categoryId
+                }
             })
             return res
         }, {

@@ -5,6 +5,7 @@ node_modules
 .pnp
 .pnp.js
 PORT = 3000
+.env.example
 
 
 tsconfig.tsbuildinfo
