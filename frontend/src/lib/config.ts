@@ -4,7 +4,7 @@
  * In production, serve the frontend from the same site as the API (e.g. nginx: /api -> backend)
  * so the default "/api/v1" works there too, or set VITE_API_URL.
  */
-export const API_BASE_URL: string = import.meta.env.VITE_API_URL ?? "/api/v1";
+export const API_BASE_URL: string = import.meta.env.VITE_API_URL || "/api/v1";
 
 /** Notification server (payment links, inventory updates). */
 export const WS_URL: string = import.meta.env.VITE_WS_URL ?? "ws://localhost:8080";
