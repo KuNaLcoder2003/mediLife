@@ -41,3 +41,6 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# services.sh output
+logs/
