@@ -8,7 +8,7 @@ const PORT = process.env.PORT
 const app = express()
 
 app.use(cors({
-    origin: 'https://medlinkhealthsupplies.com.au',
+    origin: ["https://medlinkhealthsupplies.com.au", "http://localhost:5173"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
 }))
