@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useCart } from "../../cart/cart-context";
 import { BackIcon, ChevronDownIcon, NextIcon, SlidersIcon } from "../../components/store/auth/Icons";
-import { ProductCard, ProductCardSkeleton } from "../../components/store/Productcard";
+import { ProductCard, ProductCardSkeleton } from "../../components/store/ProductCard";
 import { useQuery } from "../../hooks/useQuery";
 import { productApi } from "../../lib/api";
 import { CURRENCY } from "../../lib/config";

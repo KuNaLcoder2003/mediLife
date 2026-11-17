@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { formatDate, formatPrice } from "../../lib/format";
 import { ArrowRightIcon, DocIcon, HeadsetIcon, RefreshIcon, ShieldIcon, TruckIcon } from "./auth/Icons";
-import { AddToCartButton, ProductCard, ProductCardSkeleton } from "./Productcard";
+import { AddToCartButton, ProductCard, ProductCardSkeleton } from "./ProductCard";
 import { HOME_CONTENT } from "../../lib/homeContent";
 import CategoryIcon from "./CategoryIcon";
 import { toneOf, type CategoryStat, type ProductView } from "../../lib/Homedata";

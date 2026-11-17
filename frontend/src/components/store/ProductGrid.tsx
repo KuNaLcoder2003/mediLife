@@ -1,5 +1,5 @@
 import type { ProductView } from "../../lib/Homedata";
-import { ProductCard } from "./Productcard";
+import { ProductCard } from "./ProductCard";
 
 export function ProductGrid({ products }: { products: ProductView[] }) {
   return (
