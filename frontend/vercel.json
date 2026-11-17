@@ -1,0 +1,6 @@
+  {
+    "rewrites": [
+      { "source": "/api/:path*", "destination": "https://backend.medlinkhealthsupplies.com.au/api/:path*" },
+      { "source": "/(.*)", "destination": "/index.html" }
+    ]
+  }
